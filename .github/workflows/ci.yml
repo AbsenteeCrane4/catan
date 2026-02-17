@@ -1,0 +1,53 @@
+name: Catan Unit Tests and Build Pipeline
+
+on: push
+  # pull_request:
+  #   branches:
+  #     - main
+  #   types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Check for Linting Errors
+        run: npm run lint
+        continue-on-error: false
+
+      - name: Run Vitest
+        run: npx vitest run
+
+  build:
+    name: Production Build Check
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Next.js App
+        run: npm run build
