@@ -62,6 +62,8 @@ export default function CatanPage() {
           settlements={state.settlements}
           radius={state.boardRadius}
           onBuildSettlement={actions.buildSettlement}
+          roads={state.roads}
+          onBuildRoad={actions.buildRoad}
         />
         
         {/* Right Sidebar: Controls & Log */}
