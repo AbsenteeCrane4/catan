@@ -1,64 +1,98 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useCatanGame } from '@/hooks/useCatanGame';
+import { GameBoard } from '@/components/board/GameBoard';
+import { PlayerSidebar } from '@/components/ui/PlayerSidebar';
+import { GameControls } from '@/components/ui/GameControls'; // (Assume this exists similarly to Sidebar)
+import { Hexagon, Map as MapIcon, Users } from 'lucide-react';
+
+export default function CatanPage() {
+  const { state, actions } = useCatanGame();
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="h-screen w-screen bg-slate-900 text-slate-100 flex flex-col font-sans overflow-hidden">
+      
+      {/* --- Top Navigation --- */}
+      <header className="h-16 px-6 bg-slate-800 border-b border-slate-700 flex items-center justify-between z-10 shrink-0">
+        <div className="flex items-center gap-2">
+          <Hexagon className="text-amber-500" fill="currentColor" />
+          <h1 className="text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
+            Catan Clone
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Settings Controls */}
+        <div className="flex items-center gap-6 text-sm">
+           <div className="flex flex-col items-end">
+             <label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Map Radius</label>
+             <div className="flex items-center gap-2">
+                <MapIcon size={14} />
+                <input 
+                  type="range" min="2" max="5" 
+                  value={state.boardRadius} 
+                  onChange={(e) => actions.setBoardRadius(Number(e.target.value))}
+                  className="accent-amber-500 h-1 w-24"
+                />
+                <span className="w-3 font-mono">{state.boardRadius}</span>
+             </div>
+           </div>
+           
+           <div className="flex flex-col items-end">
+             <label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Players</label>
+             <div className="flex items-center gap-2">
+                <Users size={14} />
+                <input 
+                  type="range" min="2" max="8" 
+                  value={state.playerCount} 
+                  onChange={(e) => actions.setPlayerCount(Number(e.target.value))}
+                  className="accent-amber-500 h-1 w-24"
+                />
+                <span className="w-3 font-mono">{state.playerCount}</span>
+             </div>
+           </div>
         </div>
+      </header>
+
+      {/* --- Main Content Area --- */}
+      <main className="flex-1 flex overflow-hidden">
+        <PlayerSidebar players={state.players} currentPlayerIndex={state.currentPlayerIndex} />
+        
+        <GameBoard hexes={state.hexes} radius={state.boardRadius} />
+        
+        {/* Right Sidebar: Controls & Log */}
+        <aside className="w-72 bg-slate-800 border-l border-slate-700 flex flex-col">
+           {/* Extract this into <GameControls /> */}
+           <div className="p-6 border-b border-slate-700">
+             <div className="text-center mb-6">
+                <div className="text-4xl font-mono font-bold text-amber-400 bg-slate-900 py-4 rounded border border-slate-700 shadow-inner">
+                  {state.diceRoll ?? '-'}
+                </div>
+             </div>
+             <button 
+               onClick={actions.rollDice}
+               disabled={state.diceRoll !== null}
+               className="w-full py-3 mb-2 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-500 rounded font-bold transition-colors"
+             >
+               Roll Dice
+             </button>
+             <button 
+               onClick={actions.endTurn}
+               disabled={state.diceRoll === null}
+               className="w-full py-3 bg-slate-600 hover:bg-slate-500 disabled:opacity-50 rounded font-bold transition-colors"
+             >
+               End Turn
+             </button>
+           </div>
+           
+           <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-slate-300">
+             <h3 className="font-bold text-slate-500 mb-2 uppercase text-[10px] tracking-widest">Activity Log</h3>
+             <ul className="space-y-2">
+               {state.gameLog.map((log, i) => (
+                 <li key={i} className="border-b border-slate-700/50 pb-1">{log}</li>
+               ))}
+             </ul>
+           </div>
+        </aside>
       </main>
     </div>
   );
