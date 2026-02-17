@@ -3,7 +3,6 @@
 import { useCatanGame } from '@/hooks/useCatanGame';
 import { GameBoard } from '@/components/board/GameBoard';
 import { PlayerSidebar } from '@/components/ui/PlayerSidebar';
-import { GameControls } from '@/components/ui/GameControls'; // (Assume this exists similarly to Sidebar)
 import { Hexagon, Map as MapIcon, Users } from 'lucide-react';
 
 export default function CatanPage() {
@@ -57,7 +56,13 @@ export default function CatanPage() {
       <main className="flex-1 flex overflow-hidden">
         <PlayerSidebar players={state.players} currentPlayerIndex={state.currentPlayerIndex} />
         
-        <GameBoard hexes={state.hexes} radius={state.boardRadius} />
+        <GameBoard 
+          hexes={state.hexes}
+          nodes={state.nodes}
+          settlements={state.settlements}
+          radius={state.boardRadius}
+          onBuildSettlement={actions.buildSettlement}
+        />
         
         {/* Right Sidebar: Controls & Log */}
         <aside className="w-72 bg-slate-800 border-l border-slate-700 flex flex-col">

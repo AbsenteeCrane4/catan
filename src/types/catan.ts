@@ -26,4 +26,19 @@ export interface GameState {
   diceRoll: number | null;
   gameLog: string[];
   winner: number | null;
+  settlements: Record<string, Settlement>; // Keyed by Node ID
+  nodes: GameNode[]; // All valid intersections on the board
+}
+
+// types/catan.ts additions
+export interface GameNode {
+  id: string; // "q1,r1|q2,r2|q3,r3" (sorted)
+  hexCoords: { q: number; r: number }[];
+  pixelPos: { x: number; y: number };
+}
+
+export interface Settlement {
+  nodeId: string;
+  playerId: number;
+  isCity: boolean;
 }
