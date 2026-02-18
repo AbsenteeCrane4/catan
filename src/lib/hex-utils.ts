@@ -10,14 +10,14 @@ export function hexToPixel(q: number, r: number) {
 export function generateBoard(radius: number): Hex[] {
   const newHexes: Hex[] = [];
   for (let q = -radius; q <= radius; q++) {
-    let r1 = Math.max(-radius, -q - radius);
-    let r2 = Math.min(radius, -q + radius);
+    const r1 = Math.max(-radius, -q - radius);
+    const r2 = Math.min(radius, -q + radius);
     for (let r = r1; r <= r2; r++) {
       const s = -q - r;
       const isDesert = q === 0 && r === 0;
       const resource = isDesert ? 'desert' : RESOURCE_TYPES[Math.floor(Math.random() * RESOURCE_TYPES.length)];
       let token = isDesert ? null : Math.floor(Math.random() * 10) + 2;
-      if (token === 7) token = 8; // Simple 7-avoidance
+      if (token === 7) token = 8;
 
       newHexes.push({ q, r, s, resource, numberToken: token, id: `${q},${r},${s}` });
     }
@@ -28,18 +28,13 @@ export function generateBoard(radius: number): Hex[] {
 export function getNodesForBoard(hexes: Hex[]): GameNode[] {
   const nodeMap = new Map<string, GameNode>();
 
-  // 1. Generate Nodes
   hexes.forEach(hex => {
-    // Points are at 30, 90, 150, 210, 270, 330 degrees
     for (let i = 0; i < 6; i++) {
       const angle_deg = 60 * i - 30;
       const angle_rad = (Math.PI / 180) * angle_deg;
       const hexPos = hexToPixel(hex.q, hex.r);
-      
       const vx = hexPos.x + HEX_SIZE * Math.cos(angle_rad);
       const vy = hexPos.y + HEX_SIZE * Math.sin(angle_rad);
-      
-      // Precision key to merge overlapping corners
       const precisionKey = `${Math.round(vx)},${Math.round(vy)}`;
 
       if (!nodeMap.has(precisionKey)) {
@@ -56,16 +51,12 @@ export function getNodesForBoard(hexes: Hex[]): GameNode[] {
   });
 
   const nodes = Array.from(nodeMap.values());
-
-  // 2. Calculate Neighbors (Graph Edges)
-  // Two nodes are connected if distance is roughly HEX_SIZE
   const CONNECT_DIST = HEX_SIZE * 1.1; 
   const MIN_DIST = HEX_SIZE * 0.9;
 
   nodes.forEach(nodeA => {
     nodes.forEach(nodeB => {
       if (nodeA.id === nodeB.id) return;
-      
       const dx = nodeA.pixelPos.x - nodeB.pixelPos.x;
       const dy = nodeA.pixelPos.y - nodeB.pixelPos.y;
       const dist = Math.sqrt(dx*dx + dy*dy);

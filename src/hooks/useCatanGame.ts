@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Player, Hex, GameNode, Settlement, Road } from '@/types/catan';
 import { generateBoard, getNodesForBoard } from '@/lib/hex-utils';
 import { PLAYER_COLORS } from '@/lib/constants';
@@ -7,17 +7,24 @@ export function useCatanGame() {
   const [boardRadius, setBoardRadius] = useState(2);
   const [playerCount, setPlayerCount] = useState(4);
   
-  // Game State
-  const [hexes, setHexes] = useState<Hex[]>([]);
-  const [nodes, setNodes] = useState<GameNode[]>([]);
+  const [hexes, setHexes] = useState<Hex[]>(() => generateBoard(2));
+  const [nodes, setNodes] = useState<GameNode[]>(() => getNodesForBoard(generateBoard(2)));
   const [settlements, setSettlements] = useState<Record<string, Settlement>>({});
-  const [roads, setRoads] = useState<Record<string, Road>>({}); // NEW
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [roads, setRoads] = useState<Record<string, Road>>({});
+  
+  const [players, setPlayers] = useState<Player[]>(() => 
+    Array.from({ length: 4 }).map((_, i) => ({
+      id: i,
+      color: PLAYER_COLORS[i % PLAYER_COLORS.length],
+      resources: { wood: 4, brick: 4, sheep: 2, wheat: 2, ore: 0, desert: 0 },
+      score: 0,
+    }))
+  );
+
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [diceRoll, setDiceRoll] = useState<number | null>(null);
-  const [gameLog, setGameLog] = useState<string[]>([]);
+  const [gameLog, setGameLog] = useState<string[]>(['Game initialized.']);
 
-  // Init
   const resetGame = useCallback(() => {
     const newHexes = generateBoard(boardRadius);
     const newNodes = getNodesForBoard(newHexes);
@@ -32,20 +39,15 @@ export function useCatanGame() {
     setHexes(newHexes);
     setNodes(newNodes);
     setSettlements({});
-    setRoads({}); // NEW
+    setRoads({});
     setPlayers(newPlayers);
-    setGameLog(['Game initialized. Build Settlements & Roads!']);
+    setGameLog(['Board reset. New game started!']);
     setCurrentPlayerIndex(0);
     setDiceRoll(null);
   }, [boardRadius, playerCount]);
 
-  useEffect(() => {
-    resetGame();
-  }, [resetGame]);
 
   const addToLog = (msg: string) => setGameLog(p => [msg, ...p].slice(0, 10));
-
-  // --- Actions ---
 
   const buildSettlement = (nodeId: string) => {
     const player = players[currentPlayerIndex];
@@ -70,15 +72,12 @@ export function useCatanGame() {
       return;
     }
 
-    // Validation: Must connect to existing road (unless start of game - logic omitted for brevity)
-    // For now, we allow placement anywhere if distance rule is met
 
     setSettlements(prev => ({
       ...prev,
       [nodeId]: { nodeId, playerId: player.id, isCity: false }
     }));
 
-    // Deduct
     setPlayers(prev => prev.map((p, idx) => {
       if (idx !== currentPlayerIndex) return p;
       return {
@@ -92,7 +91,7 @@ export function useCatanGame() {
 
   const buildRoad = (nodeId1: string, nodeId2: string) => {
     const player = players[currentPlayerIndex];
-    const roadId = [nodeId1, nodeId2].sort().join('-'); // Consistent ID
+    const roadId = [nodeId1, nodeId2].sort().join('-');
 
     if (roads[roadId]) return;
 
@@ -122,7 +121,6 @@ export function useCatanGame() {
       [roadId]: { id: roadId, playerId: player.id, nodes: [nodeId1, nodeId2] }
     }));
 
-    // Deduct
     setPlayers(prev => prev.map((p, idx) => {
       if (idx !== currentPlayerIndex) return p;
       return {
@@ -134,11 +132,10 @@ export function useCatanGame() {
   };
 
   const rollDice = () => {
-    const total = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1;
+    const total = (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1);
     setDiceRoll(total);
     addToLog(`Rolled: ${total}`);
     
-    // Distribute
     const income: Record<number, Partial<Record<string, number>>> = {};
     Object.values(settlements).forEach(s => {
       const node = nodes.find(n => n.id === s.nodeId);
