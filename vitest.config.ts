@@ -8,12 +8,10 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
-    // This helps Vitest find the files when using the src directory
     include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
   },
   resolve: {
     alias: {
-      // The key fix: point '@' to the 'src' directory
       '@': path.resolve(__dirname, './src'),
     },
   },
