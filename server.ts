@@ -3,7 +3,7 @@ import next from 'next';
 import { Server } from 'socket.io';
 
 import { catanReducer, createInitialState } from './src/lib/game-reducer';
-import { GameState, GameAction } from './src/types/catan';
+import { GameState } from './src/types/catan';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';

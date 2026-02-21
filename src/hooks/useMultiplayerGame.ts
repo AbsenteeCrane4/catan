@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket-client';
-import { GameState, GameAction } from '@/types/catan';
+import { GameState } from '@/types/catan';
 
 export function useMultiplayerGame(gameId: string, playerIndex: number | null) {
   const [state, setState] = useState<GameState | null>(null);

@@ -69,7 +69,6 @@ describe('useCatanGame Engine', () => {
     const { result } = renderHook(() => useCatanGame());
     
     const targetHex = result.current.state.hexes.find(h => h.resource !== 'desert')!;
-    const targetToken = targetHex.numberToken!;
     
     const targetNode = result.current.state.nodes.find(n => 
       n.hexCoords.some(c => c.q === targetHex.q && c.r === targetHex.r)
@@ -79,7 +78,6 @@ describe('useCatanGame Engine', () => {
       result.current.actions.buildSettlement(targetNode.id);
     });
 
-    const initialResourceCount = result.current.state.players[0].resources[targetHex.resource];
 
     act(() => {
       result.current.actions.rollDice(); 

@@ -82,7 +82,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       const total = die1 + die2;
       
       let newLog = [`Dice Rolled: ${total} (${die1}+${die2})`, ...state.gameLog];
-      let updatedPlayers = [...state.players];
+      const updatedPlayers = [...state.players];
 
       if (total !== 7) {
         const activeHexes = state.hexes.filter(h => h.numberToken === total);
