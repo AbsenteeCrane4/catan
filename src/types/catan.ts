@@ -1,11 +1,12 @@
-export type ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore' | 'desert';
+export type ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore';
+export type HexResource = ResourceType | 'desert';
 export type PlayerColor = 'red' | 'blue' | 'white' | 'orange' | 'green' | 'brown' | 'purple' | 'gray';
 
 export interface Hex {
   q: number;
   r: number;
   s: number;
-  resource: ResourceType;
+  resource: HexResource;
   numberToken: number | null; // 2-12
   id: string;
 }
@@ -24,14 +25,16 @@ export interface GameState {
   currentPlayerIndex: number;
   diceRoll: number | null;
   gameLog: string[];
-  winner: number | null;
-  settlements: Record<string, Settlement>; // Keyed by Node ID
-  nodes: GameNode[]; // All valid intersections on the board
-  roads: Record<string, Road>; // Track built roads
+  settlements: Record<string, Settlement>;
+  nodes: GameNode[];
+  roads: Record<string, Road>;
+  isGameOver: boolean;
+  winnerId: number | null;
 }
 
 export interface GameNode {
   id: string; // "q1,r1|q2,r2|q3,r3" (sorted)
+  hexIds: string[]; // The IDs of the 1-3 hexes this node touches
   hexCoords: { q: number; r: number }[];
   pixelPos: { x: number; y: number };
   neighbors: string[]; // List of Node IDs this node connects to
@@ -48,3 +51,11 @@ export interface Road {
   playerId: number;
   nodes: [string, string]; // The two Node IDs this road connects
 }
+
+export type GameAction = 
+  | { type: 'SYNC_STATE'; payload: GameState }
+  | { type: 'BUILD_SETTLEMENT'; payload: { nodeId: string; playerId: number } }
+  | { type: 'BUILD_ROAD'; payload: { nodeId1: string; nodeId2: string; playerId: number } }
+  | { type: 'ROLL_DICE' }
+  | { type: 'SET_RADIUS'; payload: number }
+  | { type: 'END_TURN' };

@@ -37,15 +37,21 @@ export function getNodesForBoard(hexes: Hex[]): GameNode[] {
       const vy = hexPos.y + HEX_SIZE * Math.sin(angle_rad);
       const precisionKey = `${Math.round(vx)},${Math.round(vy)}`;
 
-      if (!nodeMap.has(precisionKey)) {
+      const existingNode = nodeMap.get(precisionKey);
+
+      if (!existingNode) {
         nodeMap.set(precisionKey, {
           id: precisionKey,
           pixelPos: { x: vx, y: vy },
           hexCoords: [{ q: hex.q, r: hex.r }],
+          hexIds: [hex.id],
           neighbors: []
         });
       } else {
-        nodeMap.get(precisionKey)?.hexCoords.push({ q: hex.q, r: hex.r });
+        if (!existingNode.hexIds.includes(hex.id)) {
+          existingNode.hexIds.push(hex.id);
+        }
+        existingNode.hexCoords.push({ q: hex.q, r: hex.r });
       }
     }
   });
