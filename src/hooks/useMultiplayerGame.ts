@@ -2,26 +2,21 @@ import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket-client';
 import { GameState, GameAction } from '@/types/catan';
 
-export function useMultiplayerGame(gameId: string) {
+export function useMultiplayerGame(gameId: string, playerIndex: number | null) {
   const [state, setState] = useState<GameState | null>(null);
 
   useEffect(() => {
-    socket.emit('join-room', gameId);
+    if (playerIndex === null) return;
 
-    const handleUpdate = (action: GameAction) => {
-      if (action.type === 'SYNC_STATE') {
-        setState(action.payload);
-      }
-    };
+    socket.emit('join-room', { gameId, playerIndex });
+    socket.on('game-update', (action) => {
+      if (action.type === 'SYNC_STATE') setState(action.payload);
+    });
 
-    socket.on('game-update', handleUpdate);
+    return () => { socket.off('game-update'); };
+  }, [gameId, playerIndex]);
 
-    return () => {
-      socket.off('game-update', handleUpdate);
-    };
-  }, [gameId]);
-
-  const performAction = (action: GameAction) => {
+  const performAction = (action: any) => {
     socket.emit('game-action', { gameId, action });
   };
 

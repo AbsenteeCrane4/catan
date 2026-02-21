@@ -1,45 +1,105 @@
 import { Player, ResourceType } from "@/types/catan";
 import { RESOURCE_COLORS } from "@/lib/constants";
-import { Users } from "lucide-react";
+import { Users, Dice5, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
+import { DiceRoll } from "./DiceRoll"; // Import your animation component
 
 interface Props {
   players: Player[];
   currentPlayerIndex: number;
+  myPlayerIndex: number;
+  diceRoll: number | null;
+  onRoll: () => void;
+  onEndTurn: () => void;
 }
 
-export function PlayerSidebar({ players, currentPlayerIndex }: Props) {
+export function PlayerSidebar({ 
+  players, 
+  currentPlayerIndex, 
+  myPlayerIndex, 
+  diceRoll, 
+  onRoll, 
+  onEndTurn 
+}: Props) {
+  const isMyTurn = currentPlayerIndex === myPlayerIndex;
+
   return (
-    <aside className="w-64 bg-slate-800/90 backdrop-blur border-r border-slate-700 p-4 flex flex-col gap-4 overflow-y-auto">
-      {players.map((p, idx) => (
-        <div 
-          key={p.id}
-          className={clsx(
-            "p-3 rounded-lg border-2 transition-all duration-300",
-            idx === currentPlayerIndex 
-              ? "border-amber-400 bg-slate-700 shadow-lg" 
-              : "border-transparent bg-slate-800/50"
+    <aside className="w-72 bg-slate-800/90 backdrop-blur border-r border-slate-700 p-4 flex flex-col gap-4 overflow-y-auto">
+      
+      {/* --- TURN CONTROLS SECTION --- */}
+      <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-4 mb-2">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+          {isMyTurn ? "Your Turn" : `Player ${currentPlayerIndex + 1}'s Turn`}
+        </h3>
+        
+        {/* The Dice Animation moved here */}
+        <div className="h-20 flex items-center justify-center">
+          {diceRoll ? (
+            <DiceRoll value={diceRoll} />
+          ) : (
+            <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-slate-700 flex items-center justify-center text-slate-700">
+              <Dice5 size={32} />
+            </div>
           )}
-        >
-          <div className="flex justify-between items-center mb-2">
-            <span className="font-bold flex items-center gap-2" style={{ color: p.color }}>
-              <Users size={16} /> Player {idx + 1}
-            </span>
-            <span className="text-xs bg-slate-900 px-2 py-1 rounded">VP: {p.score}</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-xs text-slate-300">
-            {Object.entries(p.resources).map(([res, count]) => {
-              if (res === 'desert') return null;
-              return (
-                <div key={res} className="flex flex-col items-center bg-slate-900/50 p-1 rounded">
-                  <div className="w-3 h-3 rounded-full mb-1" style={{ backgroundColor: RESOURCE_COLORS[res as ResourceType] }} />
-                  <span>{count}</span>
-                </div>
-              );
-            })}
-          </div>
         </div>
-      ))}
+
+        <div className="w-full space-y-2">
+          {!diceRoll ? (
+            <button 
+              disabled={!isMyTurn}
+              onClick={onRoll}
+              className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-20 disabled:grayscale py-3 rounded-lg font-bold text-slate-900 transition-all flex items-center justify-center gap-2"
+            >
+              Roll Dice
+            </button>
+          ) : (
+            <button 
+              disabled={!isMyTurn}
+              onClick={onEndTurn}
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-20 py-3 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2"
+            >
+              End Turn <ChevronRight size={18} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="h-[1px] bg-slate-700 w-full my-2" />
+
+      {/* --- PLAYERS LIST --- */}
+      <div className="space-y-3">
+        {players.map((p, idx) => (
+          <div 
+            key={p.id}
+            className={clsx(
+              "p-3 rounded-lg border-2 transition-all duration-300 relative",
+              idx === currentPlayerIndex 
+                ? "border-amber-400 bg-slate-700 shadow-lg" 
+                : "border-transparent bg-slate-800/50"
+            )}
+          >
+            {idx === myPlayerIndex && (
+              <span className="absolute -top-2 -right-1 bg-blue-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter">You</span>
+            )}
+
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-bold text-sm flex items-center gap-2" style={{ color: p.color }}>
+                <Users size={14} /> Player {idx + 1}
+              </span>
+              <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400">VP: {p.score}</span>
+            </div>
+
+            <div className="grid grid-cols-5 gap-1 text-[10px] text-slate-300">
+              {Object.entries(p.resources).map(([res, count]) => (
+                <div key={res} className="flex flex-col items-center bg-slate-900/50 p-1 rounded border border-white/5">
+                  <div className="w-2 h-2 rounded-full mb-1" style={{ backgroundColor: RESOURCE_COLORS[res as ResourceType] }} />
+                  <span className={count > 0 ? "text-white font-bold" : "text-slate-600"}>{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </aside>
   );
 }

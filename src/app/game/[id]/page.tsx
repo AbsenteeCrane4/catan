@@ -1,98 +1,84 @@
 'use client';
 
-import { use } from 'react';
+import { useState, use } from 'react';
 import { useMultiplayerGame } from '@/hooks/useMultiplayerGame';
 import { GameBoard } from '@/components/board/GameBoard';
 import { PlayerSidebar } from '@/components/ui/PlayerSidebar';
+import { DiceRoll } from '@/components/ui/DiceRoll';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function CatanPage({ params }: PageProps) {
-  const resolvedParams = use(params);
-  const gameId = resolvedParams.id;
 
-  const { state, performAction } = useMultiplayerGame(gameId);
+export default function CatanPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: gameId } = use(params);
+  const [myPlayerIndex, setMyPlayerIndex] = useState<number | null>(null);
+  
+  // Update the hook to pass our claimed index
+  const { state, performAction } = useMultiplayerGame(gameId, myPlayerIndex);
 
-  if (!state) return <div className="text-white p-10 flex h-screen items-center justify-center">Loading Server State...</div>;
-
-  return (
-    <div className="flex h-screen bg-slate-900 overflow-hidden text-white">
-      
-      {/* Left Sidebar (Players 1 & 2) */}
-      <PlayerSidebar 
-        players={state.players} 
-        currentPlayerIndex={state.currentPlayerIndex} 
-      />
-
-      {/* Main Board Area */}
-      <main className="flex-1 relative flex flex-col items-center justify-center">
-        {/* Controls Overlay */}
-        <div className="absolute top-4 left-4 z-10 flex gap-4 items-center bg-slate-800/80 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
-           <span className="font-mono text-xs text-slate-400">ROOM: {gameId}</span>
-           <div className="h-4 w-[1px] bg-white/20" />
-           <input
-              type="range" min="2" max="5"
-              value={state.boardRadius}
-              onChange={(e) => performAction({ 
-                type: 'SET_RADIUS', 
-                payload: Number(e.target.value) 
-              })}
-              className="accent-blue-500 h-1 w-24"
-            />
-        </div>
-
-        <GameBoard 
-          state={state}
-          onBuildSettlement={(nodeId) => performAction({
-            type: 'BUILD_SETTLEMENT',
-            payload: { nodeId, playerId: state.currentPlayerIndex }
-          })}
-          onBuildRoad={(nodeId1, nodeId2) => performAction({
-            type: 'BUILD_ROAD',
-            payload: { nodeId1, nodeId2, playerId: state.currentPlayerIndex }
-          })}
-        />
-      </main>
-
-      <aside className="w-64 bg-slate-800 border-l border-slate-700 p-4 flex flex-col">
-        <h2 className="text-xl font-bold mb-4">Game Actions</h2>
-        
-        <div className="space-y-4">
-          <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Turn Controls</h2>
-          
-          {/* 1. Roll Dice Button */}
-          {!state.diceRoll ? (
-            <button 
-              onClick={() => performAction({ type: 'ROLL_DICE' } as any)}
-              className="w-full bg-amber-500 hover:bg-amber-400 active:scale-95 transition-all py-4 rounded-xl font-bold text-slate-900 shadow-lg shadow-amber-900/20"
-            >
-              🎲 Roll Dice
+  // 1. Initial Selection Screen
+  if (myPlayerIndex === null) {
+    return (
+      <div className="h-screen bg-slate-900 flex flex-col items-center justify-center gap-8">
+        <h1 className="text-3xl font-bold text-white">Select Your Player</h1>
+        <div className="flex gap-4">
+          {[0, 1, 2, 3].map(i => (
+            <button key={i} onClick={() => setMyPlayerIndex(i)} className="p-8 bg-slate-800 rounded-xl hover:bg-slate-700 text-white font-bold border-2 border-slate-700 transition-all">
+              Player {i + 1}
             </button>
-          ) : (
-            <div className="w-full bg-slate-700 py-4 rounded-xl text-center font-black text-2xl border border-white/10">
-              🎲 {state.diceRoll}
-            </div>
-          )}
-
-          {/* 2. End Turn Button (Only show after rolling) */}
-          <button 
-            disabled={!state.diceRoll}
-            onClick={() => performAction({ type: 'END_TURN' } as any)}
-            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all py-4 rounded-xl font-bold"
-          >
-            End Turn
-          </button>
-        </div>
-
-        <div className="flex-1 bg-slate-900 rounded-lg p-3 overflow-y-auto font-mono text-sm text-slate-400 space-y-2">
-          {state.gameLog.map((log, i) => (
-            <div key={i}>&gt; {log}</div>
           ))}
         </div>
-      </aside>
+      </div>
+    );
+  }
 
-    </div>
-  );
+  if (!state) return <div className="text-white">Loading...</div>;
+
+  const isMyTurn = state.currentPlayerIndex === myPlayerIndex;
+
+  return (
+  <div className="flex h-screen bg-slate-900 text-white">
+    {/* Left Sidebar is now the master control */}
+    <PlayerSidebar 
+      players={state.players} 
+      currentPlayerIndex={state.currentPlayerIndex}
+      myPlayerIndex={myPlayerIndex}
+      diceRoll={state.diceRoll}
+      onRoll={() => performAction({ type: 'ROLL_DICE' })}
+      onEndTurn={() => performAction({ type: 'END_TURN' })}
+    />
+
+    <main className="flex-1 relative flex items-center justify-center overflow-hidden">
+      {/* Board Controls Overlay (Radius Slider) */}
+      <div className="absolute top-4 left-4 z-10 bg-slate-800/80 p-3 rounded-xl border border-white/10 backdrop-blur-md">
+         <input
+            type="range" min="2" max="5"
+            value={state.boardRadius}
+            onChange={(e) => performAction({ type: 'SET_RADIUS', payload: Number(e.target.value) })}
+            className="accent-blue-500 h-1 w-20"
+          />
+      </div>
+
+      <GameBoard 
+        state={state} 
+        onBuildSettlement={(nodeId) => performAction({ type: 'BUILD_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex }})}
+        onBuildRoad={(n1, n2) => performAction({ type: 'BUILD_ROAD', payload: { nodeId1: n1, nodeId2: n2, playerId: myPlayerIndex }})}
+      />
+    </main>
+
+    {/* Right Sidebar: Now just for the Game Log */}
+    <aside className="w-64 bg-slate-900/50 border-l border-slate-800 p-4 flex flex-col">
+      <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-4">Event Log</h2>
+      <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+        {state.gameLog.map((log, i) => (
+          <div key={i} className="text-[10px] font-mono text-slate-500 border-l border-slate-800 pl-2 leading-relaxed">
+            <span className="text-slate-700">#</span> {log}
+          </div>
+        ))}
+      </div>
+    </aside>
+  </div>
+);
 }
