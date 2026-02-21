@@ -1,4 +1,4 @@
-import { GameState, GameAction } from "@/types/catan";
+import { GameState, GameAction, GameNode } from "@/types/catan";
 import { generateBoard, getNodesForBoard } from "./hex-utils";
 import { PLAYER_COLORS } from "./constants";
 
@@ -26,6 +26,35 @@ export const createInitialState = (radius = 2): GameState => {
 
 function isNodeAdjacentToHex(nodeId: string, hexId: string): boolean {
   return nodeId.startsWith(hexId);
+}
+
+function getAdjacentNodeIds(targetNodeId: string, allNodes: GameNode[]): string[] {
+  const targetNode = allNodes.find(n => n.id === targetNodeId);
+  
+  if (!targetNode || targetNode.pixelPos.x === undefined || targetNode.pixelPos.y === undefined) return [];
+
+  const distances = allNodes
+    .filter(n => n.id !== targetNodeId && n.pixelPos.x !== undefined && n.pixelPos.y !== undefined)
+    .map(n => ({
+      id: n.id,
+      dist: Math.hypot(n.pixelPos.x - targetNode.pixelPos.x, n.pixelPos.y - targetNode.pixelPos.y)
+    }))
+    .sort((a, b) => a.dist - b.dist);
+
+  if (distances.length === 0) return [];
+
+  const edgeLength = distances[0].dist;
+  const threshold = edgeLength + 2; 
+
+  return distances
+    .filter(d => d.dist <= threshold)
+    .map(d => d.id);
+}
+
+function isNodeConnectedToPlayerRoad(nodeId: string, roads: Record<string, any>, playerId: number): boolean {
+  return Object.values(roads).some(road => 
+    road.playerId === playerId && (road.nodes[0] === nodeId || road.nodes[1] === nodeId)
+  );
 }
 
 export function catanReducer(state: GameState, action: GameAction): GameState {
@@ -105,27 +134,37 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
     case 'BUILD_SETTLEMENT': {
       const { nodeId, playerId } = action.payload;
       const player = state.players[playerId];
-      
+
       if (state.settlements[nodeId]) return state;
-      if (player.resources.wood < 1 || player.resources.brick < 1 || player.resources.wheat < 1 || player.resources.sheep < 1) {
-         return { ...state, gameLog: ["Not enough resources to build settlement!", ...state.gameLog] };
+
+      const neighbors = getAdjacentNodeIds(nodeId, state.nodes);
+      const isTooClose = neighbors.some(neighborId => state.settlements[neighborId]);
+      
+      if (isTooClose) {
+        return { ...state, gameLog: ["Distance Rule: Too close to another settlement!", ...state.gameLog] };
+      }
+
+      const hasConnectingRoad = isNodeConnectedToPlayerRoad(nodeId, state.roads, playerId);
+      const isInitialPhase = Object.values(state.settlements).filter(s => s.playerId === playerId).length < 2;
+      
+      if (!hasConnectingRoad && !isInitialPhase) {
+        return { ...state, gameLog: ["You must connect settlements to your roads!", ...state.gameLog] };
+      }
+
+      if (!isInitialPhase && (player.resources.wood < 1 || player.resources.brick < 1 || player.resources.wheat < 1 || player.resources.sheep < 1)) {
+        return { ...state, gameLog: ["Not enough resources!", ...state.gameLog] };
       }
 
       return {
         ...state,
-        settlements: {
-          ...state.settlements,
-          [nodeId]: { nodeId, playerId, isCity: false }
-        },
+        settlements: { ...state.settlements, [nodeId]: { nodeId, playerId, isCity: false } },
         players: state.players.map(p => p.id === playerId ? {
           ...p,
           score: p.score + 1,
-          resources: { 
+          resources: isInitialPhase ? p.resources : { 
             ...p.resources, 
-            wood: p.resources.wood - 1, 
-            brick: p.resources.brick - 1,
-            wheat: p.resources.wheat - 1,
-            sheep: p.resources.sheep - 1
+            wood: p.resources.wood - 1, brick: p.resources.brick - 1,
+            wheat: p.resources.wheat - 1, sheep: p.resources.sheep - 1 
           }
         } : p),
         gameLog: [`Player ${playerId + 1} built a settlement.`, ...state.gameLog]
@@ -134,27 +173,35 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
 
     case 'BUILD_ROAD': {
       const { nodeId1, nodeId2, playerId } = action.payload;
-      const player = state.players[playerId];
       const roadId = [nodeId1, nodeId2].sort().join('-');
       
       if (state.roads[roadId]) return state;
-      if (player.resources.wood < 1 || player.resources.brick < 1) {
-        return { ...state, gameLog: ["Not enough resources to build road!", ...state.gameLog] };
+
+      const touchesOwnedSettlement = 
+        (state.settlements[nodeId1]?.playerId === playerId) || 
+        (state.settlements[nodeId2]?.playerId === playerId);
+      
+      const touchesOwnedRoad = 
+        isNodeConnectedToPlayerRoad(nodeId1, state.roads, playerId) || 
+        isNodeConnectedToPlayerRoad(nodeId2, state.roads, playerId);
+
+      if (!touchesOwnedSettlement && !touchesOwnedRoad) {
+        return { ...state, gameLog: ["Roads must connect to your existing pieces!", ...state.gameLog] };
+      }
+
+      const player = state.players[playerId];
+      const isInitialPhase = Object.values(state.roads).filter(r => r.playerId === playerId).length < 2;
+      
+      if (!isInitialPhase && (player.resources.wood < 1 || player.resources.brick < 1)) {
+        return { ...state, gameLog: ["Not enough resources for a road!", ...state.gameLog] };
       }
 
       return {
         ...state,
-        roads: {
-          ...state.roads,
-          [roadId]: { id: roadId, playerId, nodes: [nodeId1, nodeId2] }
-        },
+        roads: { ...state.roads, [roadId]: { id: roadId, playerId, nodes: [nodeId1, nodeId2] } },
         players: state.players.map(p => p.id === playerId ? {
           ...p,
-          resources: { 
-            ...p.resources, 
-            wood: p.resources.wood - 1, 
-            brick: p.resources.brick - 1 
-          }
+          resources: isInitialPhase ? p.resources : { ...p.resources, wood: p.resources.wood - 1, brick: p.resources.brick - 1 }
         } : p),
         gameLog: [`Player ${playerId + 1} built a road.`, ...state.gameLog]
       };
