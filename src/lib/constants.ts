@@ -1,11 +1,11 @@
 // lib/constants.ts
-import { ResourceType, PlayerColor } from "@/types/catan";
+import { ResourceType, PlayerColor, HexResource } from "@/types/catan";
 
 export const HEX_SIZE = 50;
 export const HEX_WIDTH = Math.sqrt(3) * HEX_SIZE;
 export const HEX_HEIGHT = 2 * HEX_SIZE;
 
-export const RESOURCE_COLORS: Record<ResourceType, string> = {
+export const RESOURCE_COLORS: Record<HexResource, string> = {
   wood: '#228B22',   
   brick: '#B22222', 
   sheep: '#7CFC00', 
