@@ -1,11 +1,12 @@
-export type ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore' | 'desert';
+export type ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore';
+export type HexResource = ResourceType | 'desert';
 export type PlayerColor = 'red' | 'blue' | 'white' | 'orange' | 'green' | 'brown' | 'purple' | 'gray';
 
 export interface Hex {
   q: number;
   r: number;
   s: number;
-  resource: ResourceType;
+  resource: HexResource;
   numberToken: number | null; // 2-12
   id: string;
 }
@@ -13,13 +14,7 @@ export interface Hex {
 export interface Player {
   id: number;
   color: PlayerColor;
-  resources: {
-    wood: number;
-    brick: number;
-    sheep: number;
-    wheat: number;
-    ore: number;
-  };
+  resources: Record<ResourceType, number>;
   score: number;
 }
 
@@ -39,6 +34,7 @@ export interface GameState {
 
 export interface GameNode {
   id: string; // "q1,r1|q2,r2|q3,r3" (sorted)
+  hexIds: string[]; // The IDs of the 1-3 hexes this node touches
   hexCoords: { q: number; r: number }[];
   pixelPos: { x: number; y: number };
   neighbors: string[]; // List of Node IDs this node connects to

@@ -42,6 +42,7 @@ export function getNodesForBoard(hexes: Hex[]): GameNode[] {
           id: precisionKey,
           pixelPos: { x: vx, y: vy },
           hexCoords: [{ q: hex.q, r: hex.r }],
+          hexIds: [hex.id],
           neighbors: []
         });
       } else {
