@@ -19,7 +19,6 @@ export const createInitialState = (radius = 2): GameState => {
     currentPlayerIndex: 0,
     diceRoll: null,
     gameLog: ['Game started.'],
-    // These two lines satisfy the 'missing properties' error
     isGameOver: false,
     winnerId: null,
   };
@@ -30,8 +29,18 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
     case 'SYNC_STATE':
       return action.payload;
 
+    case 'END_TURN': {
+      const nextPlayerIndex = (state.currentPlayerIndex + 1) % state.players.length;
+      return {
+        ...state,
+        currentPlayerIndex: nextPlayerIndex,
+        gameLog: [...state.gameLog, `Player ${state.players[nextPlayerIndex].id + 1} ended their turn.`]
+      };
+    }
+
     case 'BUILD_SETTLEMENT': {
-      const { nodeId, playerId } = action.payload;
+      const payload = action.payload as { nodeId: string; playerId: number };
+      const { nodeId, playerId } = payload;
       const player = state.players[playerId];
 
       if (state.settlements[nodeId]) return state;

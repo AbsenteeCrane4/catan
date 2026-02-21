@@ -60,5 +60,6 @@ export type GameAction =
   | { type: 'SYNC_STATE'; payload: GameState }
   | { type: 'BUILD_SETTLEMENT'; payload: { nodeId: string; playerId: number } }
   | { type: 'BUILD_ROAD'; payload: { nodeId1: string; nodeId2: string; playerId: number } }
-  | { type: 'ROLL_DICE'; payload: { value: number } }
-  | { type: 'SET_RADIUS'; payload: number };
+  | { type: 'ROLL_DICE' }
+  | { type: 'SET_RADIUS'; payload: number }
+  | { type: 'END_TURN' };
