@@ -33,7 +33,9 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
     case 'BUILD_SETTLEMENT': {
       const { nodeId, playerId } = action.payload;
       const player = state.players[playerId];
-      
+
+      if (state.settlements[nodeId]) return state;
+
       if (player.resources.wood < 1 || player.resources.brick < 1) return state;
 
       return {
@@ -44,14 +46,41 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         },
         players: state.players.map(p => p.id === playerId ? {
           ...p,
-          resources: { ...p.resources, wood: p.resources.wood - 1, brick: p.resources.brick - 1 }
+          score: p.score + 1,
+          resources: { 
+            ...p.resources, 
+            wood: p.resources.wood - 1, 
+            brick: p.resources.brick - 1 
+            // deduct sheep and wheat in a full game
+          }
         } : p)
       };
     }
 
-    case 'ROLL_DICE': {
-      const { value } = action.payload;
-      return { ...state, diceRoll: value };
+    case 'BUILD_ROAD': {
+      const { nodeId1, nodeId2, playerId } = action.payload;
+      const player = state.players[playerId];
+      const roadId = [nodeId1, nodeId2].sort().join('-');
+      
+      if (state.roads[roadId]) return state;
+
+      if (player.resources.wood < 1 || player.resources.brick < 1) return state;
+
+      return {
+        ...state,
+        roads: {
+          ...state.roads,
+          [roadId]: { id: roadId, playerId, nodes: [nodeId1, nodeId2] }
+        },
+        players: state.players.map(p => p.id === playerId ? {
+          ...p,
+          resources: { 
+            ...p.resources, 
+            wood: p.resources.wood - 1, 
+            brick: p.resources.brick - 1 
+          }
+        } : p)
+      };
     }
 
     case 'SET_RADIUS': {
@@ -62,7 +91,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         boardRadius: radius,
         hexes: newHexes,
         nodes: getNodesForBoard(newHexes),
-        settlements: {}, // Reset board when size changes
+        settlements: {},
         roads: {},
       };
     }
