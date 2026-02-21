@@ -1,26 +1,17 @@
-import React from 'react';
-import { Hex, GameNode, Settlement, Road } from '@/types/catan';
+import { GameState } from '@/types/catan';
 import { HexTile } from './HexTile';
 import { SettlementNode } from './SettlementNode';
 import { RoadLayer } from './RoadLayer';
 import { HEX_HEIGHT } from '@/lib/constants';
 
 interface GameBoardProps {
-  hexes: Hex[];
-  nodes: GameNode[];
-  settlements: Record<string, Settlement>;
-  roads: Record<string, Road>;
-  radius: number;
+  state: GameState; // Accept the whole state object
   onBuildSettlement: (nodeId: string) => void;
-  onBuildRoad: (n1: string, n2: string) => void;
+  onBuildRoad: (nodeId1: string, nodeId2: string) => void;
 }
 
 export function GameBoard({ 
-  hexes, 
-  nodes, 
-  settlements, 
-  roads,
-  radius, 
+  state: { hexes, nodes, settlements, roads, boardRadius: radius },
   onBuildSettlement,
   onBuildRoad
 }: GameBoardProps) {

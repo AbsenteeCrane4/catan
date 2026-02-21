@@ -13,7 +13,13 @@ export interface Hex {
 export interface Player {
   id: number;
   color: PlayerColor;
-  resources: Record<ResourceType, number>;
+  resources: {
+    wood: number;
+    brick: number;
+    sheep: number;
+    wheat: number;
+    ore: number;
+  };
   score: number;
 }
 
@@ -24,10 +30,11 @@ export interface GameState {
   currentPlayerIndex: number;
   diceRoll: number | null;
   gameLog: string[];
-  winner: number | null;
-  settlements: Record<string, Settlement>; // Keyed by Node ID
-  nodes: GameNode[]; // All valid intersections on the board
-  roads: Record<string, Road>; // Track built roads
+  settlements: Record<string, Settlement>;
+  nodes: GameNode[];
+  roads: Record<string, Road>;
+  isGameOver: boolean;
+  winnerId: number | null;
 }
 
 export interface GameNode {
@@ -48,3 +55,10 @@ export interface Road {
   playerId: number;
   nodes: [string, string]; // The two Node IDs this road connects
 }
+
+export type GameAction = 
+  | { type: 'SYNC_STATE'; payload: GameState }
+  | { type: 'BUILD_SETTLEMENT'; payload: { nodeId: string; playerId: number } }
+  | { type: 'BUILD_ROAD'; payload: { nodeId1: string; nodeId2: string; playerId: number } }
+  | { type: 'ROLL_DICE'; payload: { value: number } }
+  | { type: 'SET_RADIUS'; payload: number };
