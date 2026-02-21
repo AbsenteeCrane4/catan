@@ -2,7 +2,6 @@
 
 import { use } from 'react';
 import { useMultiplayerGame } from '@/hooks/useMultiplayerGame';
-import { createInitialState } from '@/lib/game-reducer';
 import { GameBoard } from '@/components/board/GameBoard';
 
 interface PageProps {
@@ -13,10 +12,7 @@ export default function CatanPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const gameId = resolvedParams.id;
 
-  const { state, performAction } = useMultiplayerGame(
-    gameId, 
-    createInitialState(2) 
-  );
+  const { state, performAction } = useMultiplayerGame(gameId);
 
   if (!state) return <div className="text-white p-10">Loading Game...</div>;
 
