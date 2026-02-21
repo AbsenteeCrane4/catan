@@ -7,22 +7,24 @@ export function DiceRoll({ value }: { value: number | null }) {
   const [isRolling, setIsRolling] = useState(false);
 
   useEffect(() => {
-    if (value && value !== displayValue) {
+  if (value && value !== displayValue) {
+    const timeout = setTimeout(() => {
       setIsRolling(true);
-      
-      const interval = setInterval(() => {
-        setDisplayValue(Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + 2);
-      }, 100);
+    }, 0);
 
-      setTimeout(() => {
-        clearInterval(interval);
-        setDisplayValue(value);
-        setIsRolling(false);
-      }, 1000);
-    } else {
-      setDisplayValue(value);
-    }
-  }, [value]);
+    const interval = setInterval(() => {
+      setDisplayValue(() => 
+        Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + 2
+      );
+    }, 100);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }
+}, [value, displayValue, setIsRolling]);
+
 
   if (!displayValue) return null;
 
