@@ -65,7 +65,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
               const playerIdx = updatedPlayers.findIndex(p => p.id === settlement.playerId);
               
               if (playerIdx !== -1 && hex.resource !== 'desert') {
-                const resKey = hex.resource as keyof (typeof updatedPlayers[playerIdx]['resources']);
+                const resKey = hex.resource as keyof (typeof updatedPlayers[typeof playerIdx]['resources']);
                 const currentCount = updatedPlayers[playerIdx].resources[resKey];
 
                 updatedPlayers[playerIdx] = {
