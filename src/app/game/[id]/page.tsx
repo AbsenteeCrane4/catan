@@ -59,12 +59,32 @@ export default function CatanPage({ params }: PageProps) {
       <aside className="w-64 bg-slate-800 border-l border-slate-700 p-4 flex flex-col">
         <h2 className="text-xl font-bold mb-4">Game Actions</h2>
         
-        <button 
-          onClick={() => performAction({ type: 'END_TURN' } as any)}
-          className="bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold mb-4"
-        >
-          End Turn
-        </button>
+        <div className="space-y-4">
+          <h2 className="text-sm font-black uppercase tracking-widest text-slate-500">Turn Controls</h2>
+          
+          {/* 1. Roll Dice Button */}
+          {!state.diceRoll ? (
+            <button 
+              onClick={() => performAction({ type: 'ROLL_DICE' } as any)}
+              className="w-full bg-amber-500 hover:bg-amber-400 active:scale-95 transition-all py-4 rounded-xl font-bold text-slate-900 shadow-lg shadow-amber-900/20"
+            >
+              🎲 Roll Dice
+            </button>
+          ) : (
+            <div className="w-full bg-slate-700 py-4 rounded-xl text-center font-black text-2xl border border-white/10">
+              🎲 {state.diceRoll}
+            </div>
+          )}
+
+          {/* 2. End Turn Button (Only show after rolling) */}
+          <button 
+            disabled={!state.diceRoll}
+            onClick={() => performAction({ type: 'END_TURN' } as any)}
+            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all py-4 rounded-xl font-bold"
+          >
+            End Turn
+          </button>
+        </div>
 
         <div className="flex-1 bg-slate-900 rounded-lg p-3 overflow-y-auto font-mono text-sm text-slate-400 space-y-2">
           {state.gameLog.map((log, i) => (
