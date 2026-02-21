@@ -4,14 +4,13 @@ import { useState, use } from 'react';
 import { useMultiplayerGame } from '@/hooks/useMultiplayerGame';
 import { GameBoard } from '@/components/board/GameBoard';
 import { PlayerSidebar } from '@/components/ui/PlayerSidebar';
-import { DiceRoll } from '@/components/ui/DiceRoll';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
 
-export default function CatanPage({ params }: { params: Promise<{ id: string }> }) {
+export default function CatanPage({ params }: PageProps) {
   const { id: gameId } = use(params);
   const [myPlayerIndex, setMyPlayerIndex] = useState<number | null>(null);
   
@@ -35,8 +34,6 @@ export default function CatanPage({ params }: { params: Promise<{ id: string }> 
   }
 
   if (!state) return <div className="text-white">Loading...</div>;
-
-  const isMyTurn = state.currentPlayerIndex === myPlayerIndex;
 
   return (
   <div className="flex h-screen bg-slate-900 text-white">
