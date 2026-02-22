@@ -129,13 +129,16 @@ describe('Catan Game Reducer', () => {
       mockState.currentPlayerIndex = 0; // P1's final placement
       mockState.setupActionRequired = 'road';
 
+      // P1 has already placed a settlement in setup1, so we just need to place a road to finish.
+      mockState.settlements['node-B'] = { nodeId: 'node-B', playerId: 0, isCity: false };
+
       const state = catanReducer(mockState, {
         type: 'BUILD_ROAD',
         payload: { nodeId1: 'node-B', nodeId2: 'node-C', playerId: 0 },
       });
 
       expect(state.phase).toBe('main');
-      expect(state.currentPlayerIndex).toBe(0); // P1 starts the normal game
+      expect(state.currentPlayerIndex).toBe(0); 
       expect(state.setupActionRequired).toBe('none');
     });
   });
