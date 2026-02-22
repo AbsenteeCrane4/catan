@@ -23,6 +23,7 @@ export interface Player {
 export interface GameState {
   boardRadius: number;
   hexes: Hex[];
+  robberHexId: string;
   players: Player[];
   currentPlayerIndex: number;
   diceRoll: number | null;

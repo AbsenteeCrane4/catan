@@ -7,6 +7,7 @@ export const createInitialState = (radius = 2): GameState => {
   return {
     boardRadius: radius,
     hexes: hexes,
+    robberHexId: hexes.find(h => h.resource === 'desert')?.id || '', // Place robber on desert
     nodes: getNodesForBoard(hexes),
     settlements: {},
     roads: {},

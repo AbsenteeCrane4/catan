@@ -224,4 +224,17 @@ describe('Catan Game Reducer', () => {
       expect(state.gameLog[0]).toContain('Finish the setup');
     });
   });
+
+  describe('Game Setup - Robber', () => {
+  it('places the robber on the desert tile at start', () => {
+    const state = createInitialState(4);
+    
+    // Find which hex is the desert in this specific random generation
+    const desertHex = state.hexes.find(h => h.resource === 'desert');
+    
+    expect(desertHex).toBeDefined();
+    // The robber's ID in the state must match the desert's ID
+    expect(state.robberHexId).toBe(desertHex?.id);
+  });
+});
 });
