@@ -113,7 +113,6 @@ export function getNodesForBoard(hexes: Hex[]): GameNode[] {
           pixelPos: { x: roundedX, y: roundedY },
           hexIds: [],
           neighbors: [],
-          hexCoords: [],
         });
       }
 

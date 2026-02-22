@@ -7,29 +7,25 @@ describe('Catan Game Reducer', () => {
 
   const mockNodes: GameNode[] = [
     { 
-      id: 'node-A', 
-      hexCoords: [{ q: 0, r: 0 }], 
+      id: 'node-A',  
       pixelPos: { x: 0, y: 0 }, 
       neighbors: ['node-B'],
       hexIds: ['hex-1'] 
     },
     { 
       id: 'node-B', 
-      hexCoords: [{ q: 0, r: 0 }, { q: 1, r: -1 }], 
       pixelPos: { x: 10, y: 0 }, 
       neighbors: ['node-A', 'node-C'],
       hexIds: ['hex-1', 'hex-2'] 
     },
     { 
       id: 'node-C', 
-      hexCoords: [{ q: 1, r: -1 }], 
       pixelPos: { x: 20, y: 0 }, 
       neighbors: ['node-B'],
       hexIds: ['hex-2'] 
     },
     { 
       id: 'node-D', 
-      hexCoords: [{ q: -1, r: -1 }], 
       pixelPos: { x: 100, y: 100 }, 
       neighbors: [],
       hexIds: [] 

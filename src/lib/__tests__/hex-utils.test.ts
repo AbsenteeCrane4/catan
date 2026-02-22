@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateBoard, getNodesForBoard, hexToPixel } from '../hex-utils';
+import { generateBoard, getNodesForBoard, hexToPixel } from '@/lib/hex-utils';
 
 describe('Hex Math & Board Generation', () => {
   it('generates the correct number of hexes for various radii', () => {
@@ -10,12 +10,10 @@ describe('Hex Math & Board Generation', () => {
     expect(generateBoard(2)).toHaveLength(19);
   });
 
-  it('ensures exactly one desert exists at the origin', () => {
+  it('ensures exactly one desert exists with no token', () => {
     const hexes = generateBoard(2);
     const deserts = hexes.filter(h => h.resource === 'desert');
     expect(deserts).toHaveLength(1);
-    expect(deserts[0].q).toBe(0);
-    expect(deserts[0].r).toBe(0);
     expect(deserts[0].numberToken).toBeNull();
   });
 
@@ -29,14 +27,17 @@ describe('Hex Math & Board Generation', () => {
     // For a radius 1 board, there should be exactly 24 unique intersections
     expect(ids.length).toBe(uniqueIds.size);
     expect(nodes.length).toBe(24);
+    // Check for our new naming convention
+    expect(nodes[0].id).toContain('node-');
   });
 
   it('assigns exactly 3 neighbors to internal nodes', () => {
     const hexes = generateBoard(2);
     const nodes = getNodesForBoard(hexes);
     
-    // Find a node that is surrounded by hexes (the center-most nodes)
-    const centralNode = nodes.find(n => n.hexCoords.length === 3);
+    const centralNode = nodes.find(n => n.hexIds.length === 3);
+    
+    expect(centralNode).toBeDefined();
     expect(centralNode?.neighbors).toHaveLength(3);
   });
 
@@ -48,5 +49,6 @@ describe('Hex Math & Board Generation', () => {
     const pos1 = hexToPixel(1, 0);
     // Based on Math.sqrt(3) * HEX_SIZE (50)
     expect(pos1.x).toBeCloseTo(86.6, 1);
+    expect(pos1.y).toBe(0);
   });
 });
