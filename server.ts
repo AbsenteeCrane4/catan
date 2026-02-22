@@ -2,8 +2,8 @@ import { createServer } from 'http';
 import next from 'next';
 import { Server } from 'socket.io';
 
-import { catanReducer, createInitialState } from './src/lib/game-reducer';
-import { GameState } from './src/types/catan';
+import { catanReducer, createInitialState } from '@/lib/game-reducer';
+import { GameState } from '@/types/catan';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';

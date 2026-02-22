@@ -1,12 +1,13 @@
 import { GameState, GameAction, GameNode } from "@/types/catan";
-import { generateBoard, getNodesForBoard } from "./hex-utils";
-import { PLAYER_COLORS } from "./constants";
+import { generateBoard, getNodesForBoard } from "@/lib/hex-utils";
+import { PLAYER_COLORS } from "@/lib/constants";
 
 export const createInitialState = (radius = 2): GameState => {
   const hexes = generateBoard(radius);
   return {
     boardRadius: radius,
     hexes: hexes,
+    robberHexId: hexes.find(h => h.resource === 'desert')?.id || '', // Place robber on desert
     nodes: getNodesForBoard(hexes),
     settlements: {},
     roads: {},

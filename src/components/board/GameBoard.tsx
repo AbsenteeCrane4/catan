@@ -3,6 +3,7 @@ import { HexTile } from './HexTile';
 import { SettlementNode } from './SettlementNode';
 import { RoadLayer } from './RoadLayer';
 import { HEX_HEIGHT } from '@/lib/constants';
+import { Robber } from '@/components/ui/Robber';
 
 interface GameBoardProps {
   state: GameState; // Accept the whole state object
@@ -11,13 +12,18 @@ interface GameBoardProps {
 }
 
 export function GameBoard({ 
-  state: { hexes, nodes, settlements, roads, boardRadius: radius },
+  state: { hexes, nodes, settlements, roads, boardRadius: radius, robberHexId },
   onBuildSettlement,
   onBuildRoad
 }: GameBoardProps) {
   
   const viewBoxSize = (radius * 2 + 1) * HEX_HEIGHT * 1.3;
   const origin = -viewBoxSize / 2;
+
+  const robberHex = hexes.find(h => h.id === robberHexId);
+
+  const HEX_SIZE = HEX_HEIGHT / 2;
+  const robberPos = robberHex ? { x: HEX_SIZE * Math.sqrt(3) * (robberHex.q + robberHex.r / 2), y: HEX_SIZE * 3 / 2 * robberHex.r } : null;
 
   return (
     <div className="flex-1 bg-slate-900 relative overflow-hidden flex items-center justify-center">
@@ -31,6 +37,8 @@ export function GameBoard({
         <g id="hex-layer">
           {hexes.map(hex => <HexTile key={hex.id} hex={hex} />)}
         </g>
+
+        {robberPos && <Robber x={robberPos.x} y={robberPos.y} />}
         
         {/* Layer 2: Roads */}
         <RoadLayer 

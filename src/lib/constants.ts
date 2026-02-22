@@ -1,4 +1,3 @@
-// lib/constants.ts
 import { ResourceType, PlayerColor, HexResource } from "@/types/catan";
 
 export const HEX_SIZE = 50;
@@ -17,3 +16,14 @@ export const RESOURCE_COLORS: Record<HexResource, string> = {
 export const RESOURCE_TYPES: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
 
 export const PLAYER_COLORS: PlayerColor[] = ['red', 'blue', 'white', 'orange', 'green', 'brown', 'purple', 'gray'];
+
+export const BASE_GAME_RESOURCES: HexResource[] = [
+  'wood', 'wood', 'wood', 'wood',
+  'sheep', 'sheep', 'sheep', 'sheep',
+  'wheat', 'wheat', 'wheat', 'wheat',
+  'brick', 'brick', 'brick',
+  'ore', 'ore', 'ore',
+  'desert'
+];
+
+export const BASE_GAME_TOKENS = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];

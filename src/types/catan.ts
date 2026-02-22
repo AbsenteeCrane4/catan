@@ -23,6 +23,7 @@ export interface Player {
 export interface GameState {
   boardRadius: number;
   hexes: Hex[];
+  robberHexId: string;
   players: Player[];
   currentPlayerIndex: number;
   diceRoll: number | null;
@@ -39,7 +40,6 @@ export interface GameState {
 export interface GameNode {
   id: string; // "q1,r1|q2,r2|q3,r3" (sorted)
   hexIds: string[]; // The IDs of the 1-3 hexes this node touches
-  hexCoords: { q: number; r: number }[];
   pixelPos: { x: number; y: number };
   neighbors: string[]; // List of Node IDs this node connects to
 }
