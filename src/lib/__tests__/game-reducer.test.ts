@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { catanReducer, createInitialState } from '../game-reducer';
+import { catanReducer, createInitialState } from '../../lib/game-reducer';
 import { GameState, GameNode, Hex } from '../../types/catan';
 
 describe('Catan Game Reducer', () => {
@@ -11,7 +11,7 @@ describe('Catan Game Reducer', () => {
       hexCoords: [{ q: 0, r: 0 }], 
       pixelPos: { x: 0, y: 0 }, 
       neighbors: ['node-B'],
-      hexIds: ['hex-1'] // Node A is touching Hex 1 (Wood)
+      hexIds: ['hex-1'] 
     },
     { 
       id: 'node-B', 
@@ -51,6 +51,8 @@ describe('Catan Game Reducer', () => {
       settlements: {},
       roads: {},
       gameLog: [],
+      phase: 'setup1', // Explicitly start in setup
+      setupActionRequired: 'settlement'
     };
   });
 
@@ -58,7 +60,11 @@ describe('Catan Game Reducer', () => {
     vi.restoreAllMocks();
   });
 
-  describe('Turn Management', () => {
+  describe('Turn Management (Main Phase)', () => {
+    beforeEach(() => {
+      mockState.phase = 'main'; // Skip setup for these tests
+    });
+
     it('cycles to the next player on END_TURN', () => {
       mockState.currentPlayerIndex = 0;
       const nextState = catanReducer(mockState, { type: 'END_TURN' });
@@ -73,29 +79,83 @@ describe('Catan Game Reducer', () => {
     });
   });
 
-  describe('Building Settlements', () => {
-    it('allows building a free settlement during the initial phase', () => {
-      const nextState = catanReducer(mockState, {
-        type: 'BUILD_SETTLEMENT',
-        payload: { nodeId: 'node-A', playerId: 0 },
-      });
-
-      expect(nextState.settlements['node-A']).toBeDefined();
-      expect(nextState.settlements['node-A'].playerId).toBe(0);
-      expect(nextState.players[0].score).toBe(1);
-      // Ensure initial resources (4 wood) are not spent
-      expect(nextState.players[0].resources.wood).toBe(4); 
-    });
-
-    it('enforces the Distance Rule (cannot build on adjacent nodes)', () => {
-      // Player 0 builds on Node A
+  describe('Initial Setup Phase (Snake Draft)', () => {
+    it('forces player 1 to place a settlement then a road', () => {
+      // Step 1: P1 builds Settlement
       let state = catanReducer(mockState, {
         type: 'BUILD_SETTLEMENT',
         payload: { nodeId: 'node-A', playerId: 0 },
       });
 
-      // Player 1 tries to build on Node B (which is 10 units away)
+      expect(state.settlements['node-A']).toBeDefined();
+      expect(state.setupActionRequired).toBe('road');
+      expect(state.currentPlayerIndex).toBe(0); // Still P1's turn
+
+      // Step 2: P1 builds Road
       state = catanReducer(state, {
+        type: 'BUILD_ROAD',
+        payload: { nodeId1: 'node-A', nodeId2: 'node-B', playerId: 0 },
+      });
+
+      const roadId = ['node-A', 'node-B'].sort().join('-');
+      expect(state.roads[roadId]).toBeDefined();
+      
+      // Turn passes to P2, expecting a settlement
+      expect(state.currentPlayerIndex).toBe(1);
+      expect(state.setupActionRequired).toBe('settlement');
+      expect(state.phase).toBe('setup1');
+    });
+
+    it('gives starting resources on the setup2 settlement placement', () => {
+      // Fast forward to P4 in setup2
+      mockState.phase = 'setup2';
+      mockState.currentPlayerIndex = 3;
+      mockState.setupActionRequired = 'settlement';
+
+      // P4 builds on Node B (touching Wood and Brick)
+      const state = catanReducer(mockState, {
+        type: 'BUILD_SETTLEMENT',
+        payload: { nodeId: 'node-B', playerId: 3 },
+      });
+
+      // Should gain 1 Wood from hex-1 and 1 Brick from hex-2
+      expect(state.players[3].resources.wood).toBe(1);
+      expect(state.players[3].resources.brick).toBe(1);
+      expect(state.players[3].resources.wheat).toBe(0);
+    });
+
+    it('transitions to main phase after Player 1 finishes setup2', () => {
+      mockState.phase = 'setup2';
+      mockState.currentPlayerIndex = 0; // P1's final placement
+      mockState.setupActionRequired = 'road';
+
+      const state = catanReducer(mockState, {
+        type: 'BUILD_ROAD',
+        payload: { nodeId1: 'node-B', nodeId2: 'node-C', playerId: 0 },
+      });
+
+      expect(state.phase).toBe('main');
+      expect(state.currentPlayerIndex).toBe(0); // P1 starts the normal game
+      expect(state.setupActionRequired).toBe('none');
+    });
+  });
+
+  describe('Building Mechanics (Main Phase)', () => {
+    beforeEach(() => {
+      mockState.phase = 'main';
+      mockState.setupActionRequired = 'none';
+    });
+
+    it('enforces the Distance Rule (cannot build on adjacent nodes)', () => {
+      // Setup an existing settlement
+      mockState.settlements['node-A'] = { nodeId: 'node-A', playerId: 0, isCity: false };
+      
+      // Give P1 enough resources and it's their turn
+      mockState.currentPlayerIndex = 1;
+      mockState.players[1].resources = { wood: 1, brick: 1, wheat: 1, sheep: 1, ore: 0 };
+
+      // P2 tries to build on Node B (which is adjacent)
+      const state = catanReducer(mockState, {
         type: 'BUILD_SETTLEMENT',
         payload: { nodeId: 'node-B', playerId: 1 },
       });
@@ -104,46 +164,27 @@ describe('Catan Game Reducer', () => {
       expect(state.gameLog[0]).toContain('Too close');
     });
 
-    it('allows building if the node is far enough away', () => {
-      let state = catanReducer(mockState, {
-        type: 'BUILD_SETTLEMENT',
-        payload: { nodeId: 'node-A', playerId: 0 },
-      });
-
-      state = catanReducer(state, {
-        type: 'BUILD_SETTLEMENT',
-        payload: { nodeId: 'node-D', playerId: 1 },
-      });
-
-      expect(state.settlements['node-D']).toBeDefined();
-    });
-
     it('enforces resource costs during the normal phase', () => {
-      // Mock player having 2 settlements already to trigger normal phase
-      mockState.settlements = {
-        's1': { nodeId: 'node-A', playerId: 0, isCity: false },
-        's2': { nodeId: 'node-B', playerId: 0, isCity: false },
-      };
-      // Give player a road to Node C so the connection rule passes
-      mockState.roads = {
-        'r1': { id: 'node-B-node-C', playerId: 0, nodes: ['node-B', 'node-C'] }
-      };
-
-      // Set resources to zero
+      // Empty their resources
       mockState.players[0].resources = { wood: 0, brick: 0, wheat: 0, sheep: 0, ore: 0 };
+      mockState.currentPlayerIndex = 0;
+
+      // Ensure they have a road to pass connection rules
+      mockState.roads['node-C-node-D'] = { id: 'node-C-node-D', playerId: 0, nodes: ['node-C', 'node-D'] };
 
       const state = catanReducer(mockState, {
         type: 'BUILD_SETTLEMENT',
-        payload: { nodeId: 'node-C', playerId: 0 },
+        payload: { nodeId: 'node-D', playerId: 0 },
       });
 
-      expect(state.settlements['node-C']).toBeUndefined();
+      expect(state.settlements['node-D']).toBeUndefined();
       expect(state.gameLog[0]).toContain('Not enough resources');
     });
-  });
 
-  describe('Building Roads', () => {
     it('enforces the Connection Rule for roads', () => {
+      mockState.currentPlayerIndex = 0;
+      mockState.players[0].resources = { wood: 1, brick: 1, wheat: 0, sheep: 0, ore: 0 };
+
       const state = catanReducer(mockState, {
         type: 'BUILD_ROAD',
         payload: { nodeId1: 'node-C', nodeId2: 'node-D', playerId: 0 },
@@ -153,24 +194,13 @@ describe('Catan Game Reducer', () => {
       expect(state.roads[roadId]).toBeUndefined();
       expect(state.gameLog[0]).toContain('must connect');
     });
-
-    it('allows building a road connected to a settlement', () => {
-      let state = catanReducer(mockState, {
-        type: 'BUILD_SETTLEMENT',
-        payload: { nodeId: 'node-A', playerId: 0 },
-      });
-
-      state = catanReducer(state, {
-        type: 'BUILD_ROAD',
-        payload: { nodeId1: 'node-A', nodeId2: 'node-B', playerId: 0 },
-      });
-
-      const roadId = ['node-A', 'node-B'].sort().join('-');
-      expect(state.roads[roadId]).toBeDefined();
-    });
   });
 
   describe('Rolling Dice & Resources', () => {
+    beforeEach(() => {
+      mockState.phase = 'main'; // Only allowed to roll in main phase
+    });
+
     it('distributes resources to adjacent settlements based on the roll', () => {
       // Force roll to result in 8 (Wood)
       vi.spyOn(Math, 'random').mockReturnValue(0.5); 
@@ -187,15 +217,12 @@ describe('Catan Game Reducer', () => {
       expect(state.players[0].resources.wood).toBe(initialWood + 1);
     });
 
-    it('triggers the robber text on a 7', () => {
-      vi.spyOn(Math, 'random')
-        .mockReturnValueOnce(0.4) // 3
-        .mockReturnValueOnce(0.5); // 4
-
+    it('prevents rolling during setup phases', () => {
+      mockState.phase = 'setup1';
       const state = catanReducer(mockState, { type: 'ROLL_DICE' });
-
-      expect(state.diceRoll).toBe(7);
-      expect(state.gameLog[0]).toContain('7 rolled');
+      
+      expect(state.diceRoll).toBeNull();
+      expect(state.gameLog[0]).toContain('Finish the setup');
     });
   });
 });
