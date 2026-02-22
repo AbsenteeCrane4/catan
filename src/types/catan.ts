@@ -1,6 +1,8 @@
 export type ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore';
 export type HexResource = ResourceType | 'desert';
 export type PlayerColor = 'red' | 'blue' | 'white' | 'orange' | 'green' | 'brown' | 'purple' | 'gray';
+export type GamePhase = 'setup1' | 'setup2' | 'main';
+export type SetupAction = 'settlement' | 'road' | 'none';
 
 export interface Hex {
   q: number;
@@ -30,6 +32,8 @@ export interface GameState {
   roads: Record<string, Road>;
   isGameOver: boolean;
   winnerId: number | null;
+  phase: GamePhase;
+  setupActionRequired: SetupAction;
 }
 
 export interface GameNode {
