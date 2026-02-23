@@ -248,7 +248,7 @@ describe('Catan Game Reducer', () => {
       
       // Give P1 exact resources for a city
       mockState.players[0].resources = { wood: 0, brick: 0, wheat: 2, sheep: 0, ore: 3 };
-      mockState.players[0].score = 1; // 1 VP for the starting settlement
+      mockState.players[0].victoryPoints = 1; // 1 VP for the starting settlement
     });
 
     it('upgrades a settlement to a city and deducts resources', () => {
@@ -260,7 +260,7 @@ describe('Catan Game Reducer', () => {
       expect(state.settlements['node-A'].isCity).toBe(true);
       expect(state.players[0].resources.ore).toBe(0);
       expect(state.players[0].resources.wheat).toBe(0);
-      expect(state.players[0].score).toBe(2); // VP should increase
+      expect(state.players[0].victoryPoints).toBe(2); // VP should increase
     });
 
     it('fails if the player does not have enough resources', () => {

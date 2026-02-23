@@ -17,7 +17,7 @@ export interface Player {
   id: number;
   color: PlayerColor;
   resources: Record<ResourceType, number>;
-  score: number;
+  victoryPoints: number;
 }
 
 export interface GameState {

@@ -15,7 +15,7 @@ export const createInitialState = (radius = 2): GameState => {
       id: i,
       color: PLAYER_COLORS[i % PLAYER_COLORS.length],
       resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }, // Start at 0!
-      score: 0,
+      victoryPoints: 0,
     })),
     currentPlayerIndex: 0,
     diceRoll: null,
@@ -88,7 +88,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
           wheat: player.resources.wheat - 2
         },
         // A city is worth 2 VPs total (+1 from the existing settlement)
-        score: player.score + 1 
+        victoryPoints: player.victoryPoints + 1 
       };
 
       return {
@@ -188,7 +188,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         }
       }
 
-      updatedPlayers[playerId].score += 1;
+      updatedPlayers[playerId].victoryPoints += 1;
 
       return {
         ...state,
