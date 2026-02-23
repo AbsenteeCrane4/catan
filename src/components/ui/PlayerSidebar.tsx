@@ -86,7 +86,7 @@ export function PlayerSidebar({
               <span className="font-bold text-sm flex items-center gap-2" style={{ color: p.color }}>
                 <Users size={14} /> Player {idx + 1}
               </span>
-              <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400">VP: {p.score}</span>
+              <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400">VP: {p.victoryPoints}</span>
             </div>
 
             <div className="grid grid-cols-5 gap-1 text-[10px] text-slate-300">

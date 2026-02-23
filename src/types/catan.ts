@@ -17,7 +17,7 @@ export interface Player {
   id: number;
   color: PlayerColor;
   resources: Record<ResourceType, number>;
-  score: number;
+  victoryPoints: number;
 }
 
 export interface GameState {
@@ -59,6 +59,7 @@ export interface Road {
 export type GameAction = 
   | { type: 'SYNC_STATE'; payload: GameState }
   | { type: 'BUILD_SETTLEMENT'; payload: { nodeId: string; playerId: number } }
+  | { type: 'UPGRADE_SETTLEMENT'; payload: { nodeId: string; playerId: number } }
   | { type: 'BUILD_ROAD'; payload: { nodeId1: string; nodeId2: string; playerId: number } }
   | { type: 'ROLL_DICE' }
   | { type: 'SET_RADIUS'; payload: number }

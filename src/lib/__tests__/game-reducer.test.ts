@@ -236,5 +236,60 @@ describe('Catan Game Reducer', () => {
     // The robber's ID in the state must match the desert's ID
     expect(state.robberHexId).toBe(desertHex?.id);
   });
-});
+  });
+
+  describe('City Upgrades', () => {
+    beforeEach(() => {
+      mockState.phase = 'main';
+      mockState.currentPlayerIndex = 0;
+      
+      // Give P1 a settlement on node-A
+      mockState.settlements['node-A'] = { nodeId: 'node-A', playerId: 0, isCity: false };
+      
+      // Give P1 exact resources for a city
+      mockState.players[0].resources = { wood: 0, brick: 0, wheat: 2, sheep: 0, ore: 3 };
+      mockState.players[0].victoryPoints = 1; // 1 VP for the starting settlement
+    });
+
+    it('upgrades a settlement to a city and deducts resources', () => {
+      const state = catanReducer(mockState, {
+        type: 'UPGRADE_SETTLEMENT',
+        payload: { nodeId: 'node-A', playerId: 0 },
+      });
+
+      expect(state.settlements['node-A'].isCity).toBe(true);
+      expect(state.players[0].resources.ore).toBe(0);
+      expect(state.players[0].resources.wheat).toBe(0);
+      expect(state.players[0].victoryPoints).toBe(2); // VP should increase
+    });
+
+    it('fails if the player does not have enough resources', () => {
+      // Remove 1 Ore
+      mockState.players[0].resources.ore = 2;
+
+      const state = catanReducer(mockState, {
+        type: 'UPGRADE_SETTLEMENT',
+        payload: { nodeId: 'node-A', playerId: 0 },
+      });
+
+      expect(state.settlements['node-A'].isCity).toBe(false);
+      expect(state.gameLog[0]).toContain('Not enough resources');
+    });
+
+    it('gives double resources for a city on a dice roll', () => {
+      // 1. Upgrade the settlement first
+      const stateWithCity = catanReducer(mockState, {
+        type: 'UPGRADE_SETTLEMENT',
+        payload: { nodeId: 'node-A', playerId: 0 },
+      });
+
+      // 2. Force roll an 8 (Wood from hex-1 touching node-A based on your mock setup)
+      vi.spyOn(Math, 'random').mockReturnValue(0.5); // Or whatever triggers an 8 in your dice logic
+      
+      const finalState = catanReducer(stateWithCity, { type: 'ROLL_DICE' });
+
+      // Node A touches hex-1 (Wood). Since it's a city, P1 should get 2 Wood.
+      expect(finalState.players[0].resources.wood).toBe(2);
+    });
+  });
 });

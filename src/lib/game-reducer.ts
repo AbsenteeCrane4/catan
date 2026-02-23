@@ -15,7 +15,7 @@ export const createInitialState = (radius = 2): GameState => {
       id: i,
       color: PLAYER_COLORS[i % PLAYER_COLORS.length],
       resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }, // Start at 0!
-      score: 0,
+      victoryPoints: 0,
     })),
     currentPlayerIndex: 0,
     diceRoll: null,
@@ -58,6 +58,48 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
 
     case 'SET_RADIUS': {
       return createInitialState(action.payload);
+    }
+
+    case 'UPGRADE_SETTLEMENT': {
+      const { nodeId, playerId } = action.payload;
+      
+      if (state.phase !== 'main') return { ...state, gameLog: ["Cities can only be built during the main phase.", ...state.gameLog] };
+      if (state.currentPlayerIndex !== playerId) return state; // Ignore out-of-turn clicks
+
+      const settlement = state.settlements[nodeId];
+      if (!settlement) return { ...state, gameLog: ["No settlement here to upgrade.", ...state.gameLog] };
+      if (settlement.playerId !== playerId) return { ...state, gameLog: ["You can only upgrade your own settlements.", ...state.gameLog] };
+      if (settlement.isCity) return { ...state, gameLog: ["This is already a city.", ...state.gameLog] };
+
+      const player = state.players[playerId];
+      
+      // Rule: Costs 3 Ore and 2 Wheat
+      if (player.resources.ore < 3 || player.resources.wheat < 2) {
+        return { ...state, gameLog: ["Not enough resources for a city (Requires 3 Ore, 2 Wheat).", ...state.gameLog] };
+      }
+
+      // Deduct resources
+      const newPlayers = [...state.players];
+      newPlayers[playerId] = {
+        ...player,
+        resources: {
+          ...player.resources,
+          ore: player.resources.ore - 3,
+          wheat: player.resources.wheat - 2
+        },
+        // A city is worth 2 VPs total (+1 from the existing settlement)
+        victoryPoints: player.victoryPoints + 1 
+      };
+
+      return {
+        ...state,
+        players: newPlayers,
+        settlements: {
+          ...state.settlements,
+          [nodeId]: { ...settlement, isCity: true }
+        },
+        gameLog: [`Player ${playerId + 1} upgraded a settlement to a City!`, ...state.gameLog]
+      };
     }
 
     case 'ROLL_DICE': {
@@ -146,7 +188,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         }
       }
 
-      updatedPlayers[playerId].score += 1;
+      updatedPlayers[playerId].victoryPoints += 1;
 
       return {
         ...state,

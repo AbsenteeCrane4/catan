@@ -62,6 +62,7 @@ export default function CatanPage({ params }: PageProps) {
         state={state} 
         onBuildSettlement={(nodeId) => performAction({ type: 'BUILD_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex }})}
         onBuildRoad={(n1, n2) => performAction({ type: 'BUILD_ROAD', payload: { nodeId1: n1, nodeId2: n2, playerId: myPlayerIndex }})}
+        onUpgradeSettlement={(nodeId) => performAction({ type: 'UPGRADE_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex }})}
       />
     </main>
 
