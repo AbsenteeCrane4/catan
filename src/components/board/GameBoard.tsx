@@ -9,11 +9,13 @@ interface GameBoardProps {
   state: GameState; // Accept the whole state object
   onBuildSettlement: (nodeId: string) => void;
   onBuildRoad: (nodeId1: string, nodeId2: string) => void;
+  onUpgradeSettlement: (nodeId: string) => void;
 }
 
 export function GameBoard({ 
   state: { hexes, nodes, settlements, roads, boardRadius: radius, robberHexId },
   onBuildSettlement,
+  onUpgradeSettlement,
   onBuildRoad
 }: GameBoardProps) {
   
@@ -55,6 +57,7 @@ export function GameBoard({
               node={node} 
               owner={settlements[node.id]} 
               onBuild={() => onBuildSettlement(node.id)}
+              onUpgrade={() => onUpgradeSettlement(node.id)}
             />
           ))}
         </g>

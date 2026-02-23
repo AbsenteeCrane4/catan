@@ -1,35 +1,56 @@
-import { PLAYER_COLORS } from "@/lib/constants";
-import { GameNode, Settlement } from "@/types/catan";
-
 // components/board/SettlementNode.tsx
-export function SettlementNode({ node, owner, onBuild }: { 
-  node: GameNode; 
-  owner?: Settlement; 
-  onBuild: () => void 
-}) {
+import { PLAYER_COLORS } from "@/lib/constants";
+import { GameNode } from "@/types/catan";
+import { SettlementIcon } from "@/components/ui/SettlementIcon";
+import { CityIcon } from "@/components/ui/CityIcon";
+
+interface SettlementNodeProps {
+  node: GameNode;
+  owner?: { playerId: number; isCity: boolean } | null;
+  onBuild: () => void;
+  onUpgrade: () => void;
+}
+
+export function SettlementNode({ node, owner, onBuild, onUpgrade }: SettlementNodeProps) {
+  
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!owner) {
+      // Logic for building a new settlement
+      onBuild();
+    } else if (!owner.isCity) {
+      // Logic for upgrading to a city
+      const confirmed = window.confirm("Upgrade this settlement to a city for 3 Ore and 2 Wheat?");
+      if (confirmed) {
+        onUpgrade();
+      }
+    } else {
+      console.log("This is already a city.");
+    }
+  };
+
   return (
     <g 
       transform={`translate(${node.pixelPos.x}, ${node.pixelPos.y})`}
-      onClick={(e) => { e.stopPropagation(); onBuild(); }}
+      onClick={handleClick}
       className="cursor-pointer group"
     >
-      {/* Ghost node for building */}
+      {/* Ghost node (Hover state for empty spots) */}
       {!owner && (
         <circle 
-          r="8" 
+          r="10" 
           className="fill-white/20 opacity-0 group-hover:opacity-100 transition-opacity" 
         />
       )}
       
-      {/* Actual Settlement */}
+      {/* Render either City or Settlement based on state */}
       {owner && (
-        <path
-          d="M -8 4 L -8 -2 L 0 -8 L 8 -2 L 8 4 Z" // Simple house shape
-          fill={PLAYER_COLORS[owner.playerId]}
-          stroke="white"
-          strokeWidth="1"
-          className="drop-shadow-md"
-        />
+        owner.isCity ? (
+          <CityIcon color={PLAYER_COLORS[owner.playerId]} />
+        ) : (
+          <SettlementIcon color={PLAYER_COLORS[owner.playerId]} />
+        )
       )}
     </g>
   );
