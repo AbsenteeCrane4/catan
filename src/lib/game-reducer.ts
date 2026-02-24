@@ -311,7 +311,6 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       const { acceptorId } = action.payload;
       const tradeOffer = state.currentTradeOffer;
 
-      if (acceptorId !== state.currentPlayerIndex) return { ...state, gameLog: ["It's not your turn!", ...state.gameLog] };
       if (!tradeOffer) return { ...state, gameLog: ["No trade to accept!", ...state.gameLog] };
 
       const initiator = state.players[tradeOffer.initiatorId];
