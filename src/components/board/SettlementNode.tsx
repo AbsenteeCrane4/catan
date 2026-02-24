@@ -21,10 +21,7 @@ export function SettlementNode({ node, owner, onBuild, onUpgrade }: SettlementNo
       onBuild();
     } else if (!owner.isCity) {
       // Logic for upgrading to a city
-      const confirmed = window.confirm("Upgrade this settlement to a city for 3 Ore and 2 Wheat?");
-      if (confirmed) {
-        onUpgrade();
-      }
+      onUpgrade();
     } else {
       console.log("This is already a city.");
     }
