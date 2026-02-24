@@ -18,6 +18,16 @@ const eslintConfig = defineConfig([
     rules: {
       // Custom rules can be added here
       "@typescript-eslint/no-explicit-any": "off",
+      "no-unused-vars": "off", // Must disable the base rule as it can report incorrect errors
+      "@typescript-eslint/no-unused-vars": [
+        "warn", 
+        {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_",
+          "ignoreRestSiblings": true
+        }
+      ]
     },
   },
 ]);

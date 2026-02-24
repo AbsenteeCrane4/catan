@@ -37,7 +37,7 @@ app.prepare().then(() => {
       const actingPlayerIndex = socketToPlayer.get(socket.id);
 
       if (state && actingPlayerIndex !== undefined) {
-        if (state.currentPlayerIndex !== actingPlayerIndex && action.type !== 'SET_RADIUS') {
+        if (state.currentPlayerIndex !== actingPlayerIndex && action.type !== 'SET_RADIUS' && action.type !== 'ACCEPT_TRADE') {
           socket.emit('error', 'It is not your turn!');
           return;
         }

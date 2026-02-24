@@ -1,4 +1,4 @@
-import { GameState, GameAction, GameNode } from "@/types/catan";
+import { GameState, GameAction, GameNode, ResourceType } from "@/types/catan";
 import { generateBoard, getNodesForBoard } from "@/lib/hex-utils";
 import { PLAYER_COLORS } from "@/lib/constants";
 
@@ -11,6 +11,7 @@ export const createInitialState = (radius = 2): GameState => {
     nodes: getNodesForBoard(hexes),
     settlements: {},
     roads: {},
+    currentTradeOffer: null,
     players: Array.from({ length: 4 }).map((_, i) => ({
       id: i,
       color: PLAYER_COLORS[i % PLAYER_COLORS.length],
@@ -261,6 +262,98 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         } : p),
         gameLog: [`Player ${playerId + 1} built a road.`, ...state.gameLog]
       };
+    }
+
+    case 'TRADE_WITH_BANK': {
+      const { playerId, offerResource, requestResource } = action.payload;
+      
+      if (state.phase !== 'main') return state;
+      if (playerId !== state.currentPlayerIndex) return state;
+
+      const player = state.players[playerId];
+      const cost = 4; // Standard 4:1 trade ratio
+      if (player.resources[offerResource] < cost) {
+        return { ...state, gameLog: [`Player ${playerId + 1} doesn't have enough ${offerResource}!`, ...state.gameLog] };
+      }
+
+      const updatedPlayers = [...state.players];
+      updatedPlayers[playerId] = {
+        ...player,
+        resources: {
+          ...player.resources,
+          [offerResource]: player.resources[offerResource] - cost,
+          [requestResource]: player.resources[requestResource] + 1
+        }
+      };
+
+      return {
+        ...state,
+        players: updatedPlayers,
+        gameLog: [`Player ${playerId + 1} traded 1 ${offerResource} for 1 ${requestResource}.`, ...state.gameLog]
+      };
+    }
+
+    case 'PROPOSE_TRADE': {
+      const { offer } = action.payload;
+      const player = state.players[offer.initiatorId];
+
+      if (state.phase !== 'main') return state;
+
+      // Validate offer
+      for (const [res, amount] of Object.entries(offer.offer)) {
+        if (player.resources[res as ResourceType] < amount) {
+          return { ...state, gameLog: [`Player ${offer.initiatorId + 1} doesn't have enough ${res} to offer!`, ...state.gameLog] };
+        }
+      }
+
+      return { ...state, currentTradeOffer: offer, gameLog: [`Player ${offer.initiatorId + 1} proposed a trade.`, ...state.gameLog] };
+    }
+
+    case 'ACCEPT_TRADE': {
+      const { acceptorId } = action.payload;
+      const tradeOffer = state.currentTradeOffer;
+      
+      if (!tradeOffer) return { ...state, gameLog: ["No trade to accept!", ...state.gameLog] };
+
+      const initiator = state.players[tradeOffer.initiatorId];
+      const acceptor = state.players[acceptorId];
+
+      // Validate acceptor has the requested resources
+      for (const [res, amount] of Object.entries(tradeOffer.request)) {
+        if (acceptor.resources[res as ResourceType] < amount) {
+          return { ...state, gameLog: [`Player ${acceptorId + 1} doesn't have enough ${res} to accept!`, ...state.gameLog] };
+        }
+      }
+
+      const updatedPlayers = [...state.players];
+
+      const newInitiatorResources = { ...initiator.resources };
+      const newAcceptorResources = { ...acceptor.resources };
+      
+      for (const [res, amount] of Object.entries(tradeOffer.offer)) {
+        newInitiatorResources[res as ResourceType] -= amount;
+        newAcceptorResources[res as ResourceType] += amount;
+      }
+      
+      for (const [res, amount] of Object.entries(tradeOffer.request)) {
+        newInitiatorResources[res as ResourceType] += amount;
+        newAcceptorResources[res as ResourceType] -= amount;
+      }
+
+      // Update resources for both players in the trade
+      updatedPlayers[tradeOffer.initiatorId] = { ...initiator, resources: newInitiatorResources };
+      updatedPlayers[acceptorId] = { ...acceptor, resources: newAcceptorResources };
+
+      return {
+        ...state,
+        players: updatedPlayers,
+        currentTradeOffer: null,
+        gameLog: [`Player ${acceptorId + 1} accepted the trade with Player ${tradeOffer.initiatorId + 1}.`, ...state.gameLog]
+      };
+    }
+
+    case 'CANCEL_TRADE': {
+      return { ...state, currentTradeOffer: null, gameLog: ["Trade offer cancelled.", ...state.gameLog] };
     }
 
     default: return state;
