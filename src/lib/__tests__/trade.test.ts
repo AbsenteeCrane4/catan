@@ -42,6 +42,7 @@ describe('Catan Trading Logic', () => {
 
   describe('Player-to-Player Trades', () => {
     it('should update currentTradeOffer when a trade is proposed', () => {
+      initialState.phase = 'main';
       const offer = {
         initiatorId: 0,
         offer: { wood: 2, brick: 0, wheat: 0, sheep: 0, ore: 0 },
@@ -53,6 +54,7 @@ describe('Catan Trading Logic', () => {
     });
 
     it('should execute resource swap when a trade is accepted', () => {
+      initialState.phase = 'main';
       // 1. Propose
       const offer = {
         initiatorId: 0,
@@ -77,6 +79,7 @@ describe('Catan Trading Logic', () => {
     });
 
     it('should block acceptance if the acceptor lacks resources', () => {
+      initialState.phase = 'main';
       const offer = {
         initiatorId: 0,
         offer: { wood: 1, brick: 0, wheat: 0, sheep: 0, ore: 0 },
@@ -88,6 +91,21 @@ describe('Catan Trading Logic', () => {
       
       expect(state.players[0].resources.wood).toBe(10); // No change
       expect(state.gameLog[0]).toContain("Player 2 doesn't have enough brick to accept!");
+    });
+
+    it('should block show no trade to accept if its in setup phase', () => {
+      initialState.phase = 'setup1';
+      const offer = {
+        initiatorId: 0,
+        offer: { wood: 2, brick: 0, wheat: 0, sheep: 0, ore: 0 },
+        request: { wood: 0, brick: 1, wheat: 0, sheep: 0, ore: 0 }
+      };
+      let state = catanReducer(initialState, { type: 'PROPOSE_TRADE', payload: { offer } });
+      
+      state = catanReducer(state, { type: 'ACCEPT_TRADE', payload: { acceptorId: 1 } });
+      
+      expect(state.players[0].resources.wood).toBe(10); // No change
+      expect(state.gameLog[0]).toContain("No trade to accept!");
     });
   });
 });
