@@ -35,6 +35,7 @@ export interface GameState {
   winnerId: number | null;
   phase: GamePhase;
   setupActionRequired: SetupAction;
+  currentTradeOffer: TradeOffer | null;
 }
 
 export interface GameNode {
@@ -56,6 +57,12 @@ export interface Road {
   nodes: [string, string]; // The two Node IDs this road connects
 }
 
+export interface TradeOffer {
+  initiatorId: number;
+  offer: Record<ResourceType, number>;
+  request: Record<ResourceType, number>;
+}
+
 export type GameAction = 
   | { type: 'SYNC_STATE'; payload: GameState }
   | { type: 'BUILD_SETTLEMENT'; payload: { nodeId: string; playerId: number } }
@@ -63,4 +70,8 @@ export type GameAction =
   | { type: 'BUILD_ROAD'; payload: { nodeId1: string; nodeId2: string; playerId: number } }
   | { type: 'ROLL_DICE' }
   | { type: 'SET_RADIUS'; payload: number }
+  | { type: 'TRADE_WITH_BANK'; payload: { playerId: number; offerResource: ResourceType; requestResource: ResourceType } }
+  | { type: 'PROPOSE_TRADE'; payload: { offer: TradeOffer } }
+  | { type: 'ACCEPT_TRADE'; payload: { acceptorId: number } }
+  | { type: 'CANCEL_TRADE' }
   | { type: 'END_TURN' };
