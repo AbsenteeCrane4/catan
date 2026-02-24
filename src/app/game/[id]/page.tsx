@@ -4,8 +4,7 @@ import { useState, use } from 'react';
 import { useMultiplayerGame } from '@/hooks/useMultiplayerGame';
 import { GameBoard } from '@/components/board/GameBoard';
 import { PlayerSidebar } from '@/components/ui/PlayerSidebar';
-import { TradeUI } from '@/components/ui/TradeUI'; // Import the new component
-import { ResourceType, TradeOffer } from '@/types/catan';
+import { TradeUI } from '@/components/ui/TradeUI';
 
 interface PageProps {
   params: Promise<{ id: string }>;
