@@ -17,24 +17,25 @@ describe('Catan Trading Logic', () => {
     it('should allow a 4:1 trade with the bank', () => {
       const action = {
         type: 'TRADE_WITH_BANK' as const,
-        payload: { playerId: 0, offerResource: 'wood' as const, requestResource: 'brick' as const }
+        payload: { playerId: 0, offerResource: 'wood' as const, requestResource: 'sheep' as const }
       };
       
       const newState = catanReducer(initialState, action);
       expect(newState.players[0].resources.wood).toBe(6);
-      expect(newState.players[0].resources.brick).toBe(1);
+      expect(newState.players[0].resources.sheep).toBe(1);
     });
 
     it('should fail if the player has fewer than 4 resources', () => {
       initialState.players[0].resources.wood = 3;
+      initialState.phase = 'main';
       const action = {
         type: 'TRADE_WITH_BANK' as const,
-        payload: { playerId: 0, offerResource: 'wood' as const, requestResource: 'brick' as const }
+        payload: { playerId: 0, offerResource: 'wood' as const, requestResource: 'sheep' as const }
       };
       
       const newState = catanReducer(initialState, action);
       expect(newState.players[0].resources.wood).toBe(3); // No change
-      expect(newState.gameLog[0]).toContain('Not enough');
+      expect(newState.gameLog[0]).toContain("Player 1 doesn't have enough wood!");
     });
   });
 
@@ -85,7 +86,7 @@ describe('Catan Trading Logic', () => {
       state = catanReducer(state, { type: 'ACCEPT_TRADE', payload: { acceptorId: 1 } });
       
       expect(state.players[0].resources.wood).toBe(10); // No change
-      expect(state.gameLog[0]).toContain("doesn't have the resources");
+      expect(state.gameLog[0]).toContain("Player 2 doesn't have enough brick to accept!");
     });
   });
 });
