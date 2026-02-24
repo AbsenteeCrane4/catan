@@ -297,6 +297,8 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       const { offer } = action.payload;
       const player = state.players[offer.initiatorId];
 
+      if (state.phase !== 'main') return state;
+
       // Validate offer
       for (const [res, amount] of Object.entries(offer.offer)) {
         if (player.resources[res as ResourceType] < amount) {
@@ -310,7 +312,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
     case 'ACCEPT_TRADE': {
       const { acceptorId } = action.payload;
       const tradeOffer = state.currentTradeOffer;
-
+      
       if (!tradeOffer) return { ...state, gameLog: ["No trade to accept!", ...state.gameLog] };
 
       const initiator = state.players[tradeOffer.initiatorId];
