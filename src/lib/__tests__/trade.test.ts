@@ -15,6 +15,7 @@ describe('Catan Trading Logic', () => {
 
   describe('Bank Trades (4:1)', () => {
     it('should allow a 4:1 trade with the bank', () => {
+        initialState.phase = 'main';
       const action = {
         type: 'TRADE_WITH_BANK' as const,
         payload: { playerId: 0, offerResource: 'wood' as const, requestResource: 'sheep' as const }
