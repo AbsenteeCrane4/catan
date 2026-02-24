@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { ResourceType, TradeOffer, Player } from '@/types/catan';
 
@@ -42,6 +44,7 @@ export function TradeUI({
   };
 
   const handlePropose = () => {
+    console.log("Proposing trade...");
     const totalOffered = Object.values(offerMap).reduce((a, b) => a + b, 0);
     const totalRequested = Object.values(requestMap).reduce((a, b) => a + b, 0);
     if (totalOffered === 0 || totalRequested === 0) return;
@@ -55,88 +58,117 @@ export function TradeUI({
 
   // --- VIEW 1: Someone else has proposed a trade ---
   if (currentTradeOffer) {
-    const isInitiator = currentTradeOffer.initiatorId === localPlayerId;
+    const isInitiator = Number(currentTradeOffer.initiatorId) === Number(localPlayerId);
+    
     return (
-      <div className="bg-slate-800 p-4 rounded-xl border border-blue-500 shadow-xl">
-        <h3 className="text-white font-bold mb-2">Active Trade Offer</h3>
-        <p className="text-slate-300 text-sm mb-4">Player {currentTradeOffer.initiatorId + 1} is offering...</p>
+      <div className="bg-blue-900/40 p-4 rounded-xl border border-blue-500/50 shadow-2xl animate-in zoom-in-95 duration-200">
+        <h3 className="text-white font-bold text-sm mb-1">Active Trade Offer</h3>
+        <p className="text-blue-200 text-[10px] uppercase tracking-wider mb-4">
+          From Player {currentTradeOffer.initiatorId + 1}
+        </p>
         
-        {/* Render the offer details here (simplified for brevity) */}
-        <div className="flex justify-between mb-4 text-sm">
-          <div className="text-red-400">Gives: {Object.entries(currentTradeOffer.offer).filter(([_, v]) => v > 0).map(([k, v]) => `${v} ${k}`).join(', ')}</div>
-          <div className="text-green-400">Wants: {Object.entries(currentTradeOffer.request).filter(([_, v]) => v > 0).map(([k, v]) => `${v} ${k}`).join(', ')}</div>
+        <div className="space-y-3 mb-6">
+          <div className="bg-slate-900/50 p-2 rounded border border-white/5">
+            <span className="text-[9px] text-slate-400 block mb-1 uppercase">They Give</span>
+            <div className="flex flex-wrap gap-2 text-xs font-mono">
+              {Object.entries(currentTradeOffer.offer).map(([res, amt]) => amt > 0 && (
+                <span key={res} className="text-emerald-400">{amt} {res}</span>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-slate-900/50 p-2 rounded border border-white/5">
+            <span className="text-[9px] text-slate-400 block mb-1 uppercase">They Want</span>
+            <div className="flex flex-wrap gap-2 text-xs font-mono">
+              {Object.entries(currentTradeOffer.request).map(([res, amt]) => amt > 0 && (
+                <span key={res} className="text-amber-400">{amt} {res}</span>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="flex gap-2">
           {isInitiator ? (
-            <button onClick={onCancelTrade} className="flex-1 bg-red-600/80 text-white py-2 rounded">Cancel Offer</button>
+            <button 
+              onClick={() => { console.log("Cancel clicked"); onCancelTrade(); }}
+              className="flex-1 bg-red-500/20 hover:bg-red-500/40 text-red-200 py-2 rounded text-xs font-bold border border-red-500/50 transition-all"
+            >
+              Cancel Offer
+            </button>
           ) : (
-            <button onClick={onAcceptTrade} className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 rounded">Accept Trade</button>
+            <button 
+              onClick={() => { console.log("Accept clicked"); onAcceptTrade(); }}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded text-xs font-bold shadow-lg shadow-emerald-900/20 transition-all active:scale-95"
+            >
+              Accept Trade
+            </button>
           )}
         </div>
       </div>
     );
   }
 
-  // --- VIEW 2: Your turn, build a trade ---
-  if (!isMyTurn) return null;
+  // --- VIEW 2: Propose Section (Only on player's turn) ---
+  if (!isMyTurn) {
+    return (
+      <div className="p-4 text-center border border-dashed border-slate-800 rounded-xl">
+        <p className="text-slate-600 text-[10px] uppercase font-bold tracking-widest">Waiting for Turn to Trade</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-slate-800 p-4 rounded-xl border border-slate-600">
-      <h3 className="text-white font-bold mb-4">Trading Post</h3>
+    <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 shadow-inner">
+      <h3 className="text-white font-bold text-sm mb-4">Trading Post</h3>
       
-      <div className="flex gap-4">
-        {/* Offer Column */}
-        <div className="flex-1">
-          <h4 className="text-slate-400 text-xs uppercase mb-2">You Offer</h4>
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <h4 className="text-slate-400 text-[9px] uppercase font-black mb-2">Offer</h4>
           {RESOURCES.map(res => (
-            <div key={res} className="flex items-center justify-between mb-1">
-              <span className="text-white text-sm capitalize">{res} ({localPlayer.resources[res]})</span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => handleAdjust('offer', res, -1)} className="px-2 bg-slate-700 text-white rounded">-</button>
-                <span className="text-white w-4 text-center">{offerMap[res]}</span>
-                <button onClick={() => handleAdjust('offer', res, 1)} className="px-2 bg-slate-700 text-white rounded">+</button>
+            <div key={res} className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-white capitalize">{res}</span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => handleAdjust('offer', res, -1)} className="w-5 h-5 flex items-center justify-center bg-slate-700 text-white rounded text-xs">-</button>
+                <span className="text-white text-xs w-4 text-center font-mono">{offerMap[res]}</span>
+                <button onClick={() => handleAdjust('offer', res, 1)} className="w-5 h-5 flex items-center justify-center bg-slate-700 text-white rounded text-xs">+</button>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Request Column */}
-        <div className="flex-1">
-          <h4 className="text-slate-400 text-xs uppercase mb-2">You Want</h4>
+        <div>
+          <h4 className="text-slate-400 text-[9px] uppercase font-black mb-2">Request</h4>
           {RESOURCES.map(res => (
-            <div key={res} className="flex items-center justify-between mb-1">
-              <span className="text-white text-sm capitalize">{res}</span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => handleAdjust('request', res, -1)} className="px-2 bg-slate-700 text-white rounded">-</button>
-                <span className="text-white w-4 text-center">{requestMap[res]}</span>
-                <button onClick={() => handleAdjust('request', res, 1)} className="px-2 bg-slate-700 text-white rounded">+</button>
+            <div key={res} className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-white capitalize">{res}</span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => handleAdjust('request', res, -1)} className="w-5 h-5 flex items-center justify-center bg-slate-700 text-white rounded text-xs">-</button>
+                <span className="text-white text-xs w-4 text-center font-mono">{requestMap[res]}</span>
+                <button onClick={() => handleAdjust('request', res, 1)} className="w-5 h-5 flex items-center justify-center bg-slate-700 text-white rounded text-xs">+</button>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="mt-6 flex gap-2 border-t border-slate-700 pt-4">
+      <div className="flex flex-col gap-2">
         <button 
           onClick={handlePropose}
-          className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded font-semibold transition-colors"
+          className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-xs font-bold transition-all active:scale-[0.98]"
         >
           Propose to Players
         </button>
-        {/* Simple Bank Trade shortcut: Check if any offered resource is exactly 4 and request is exactly 1 */}
-        {Object.values(offerMap).some(v => v >= 4) && Object.values(requestMap).some(v => v === 1) && (
+        
+        {Object.entries(offerMap).some(([_, v]) => v >= 4) && (
           <button 
             onClick={() => {
               const offerRes = Object.keys(offerMap).find(k => offerMap[k as ResourceType] >= 4) as ResourceType;
-              const reqRes = Object.keys(requestMap).find(k => requestMap[k as ResourceType] === 1) as ResourceType;
-              onTradeWithBank(offerRes, reqRes);
-              setOfferMap({ wood: 0, brick: 0, wheat: 0, sheep: 0, ore: 0 });
-              setRequestMap({ wood: 0, brick: 0, wheat: 0, sheep: 0, ore: 0 });
+              const reqRes = Object.keys(requestMap).find(k => requestMap[k as ResourceType] > 0) as ResourceType;
+              if (offerRes && reqRes) onTradeWithBank(offerRes, reqRes);
             }}
-            className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-2 rounded font-semibold transition-colors"
+            className="w-full bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 py-2 rounded text-[10px] font-bold border border-amber-600/50 transition-all"
           >
-            Trade with Bank (4:1)
+            Bank Trade (4:1)
           </button>
         )}
       </div>
