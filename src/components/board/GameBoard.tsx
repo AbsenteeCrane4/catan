@@ -3,9 +3,10 @@ import { GameState } from '@/types/catan';
 import { HexTile } from './HexTile';
 import { SettlementNode } from './SettlementNode';
 import { RoadLayer } from './RoadLayer';
-import { HEX_HEIGHT } from '@/lib/constants';
+import { HEX_HEIGHT, HEX_SIZE } from '@/lib/constants';
 import { Robber } from '@/components/ui/Robber';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { HarbourLayer } from './HarbourLayer';
 
 interface GameBoardProps {
   state: GameState; // Accept the whole state object
@@ -15,7 +16,7 @@ interface GameBoardProps {
 }
 
 export function GameBoard({ 
-  state: { hexes, nodes, settlements, roads, boardRadius: radius, robberHexId },
+  state: { hexes, nodes, settlements, roads, harbours, boardRadius: radius, robberHexId },
   onBuildSettlement,
   onBuildRoad, 
   onUpgradeSettlement 
@@ -28,7 +29,6 @@ export function GameBoard({
 
   const robberHex = hexes.find(h => h.id === robberHexId);
 
-  const HEX_SIZE = HEX_HEIGHT / 2;
   const robberPos = robberHex ? { x: HEX_SIZE * Math.sqrt(3) * (robberHex.q + robberHex.r / 2), y: HEX_SIZE * 3 / 2 * robberHex.r } : null;
 
   const handleUpgradeConfirm = () => {
@@ -49,6 +49,8 @@ export function GameBoard({
         <g id="hex-layer">
           {hexes.map(hex => <HexTile key={hex.id} hex={hex} />)}
         </g>
+
+        <HarbourLayer harbours={harbours} />
 
         {robberPos && <Robber x={robberPos.x} y={robberPos.y} />}
         

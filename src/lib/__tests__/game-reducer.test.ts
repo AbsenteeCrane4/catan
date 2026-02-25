@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { catanReducer, createInitialState } from '../../lib/game-reducer';
-import { GameState, GameNode, Hex } from '../../types/catan';
+import { GameState, GameNode, Hex, Harbour } from '../../types/catan';
 
 describe('Catan Game Reducer', () => {
   let mockState: GameState;
@@ -32,6 +32,17 @@ describe('Catan Game Reducer', () => {
     },
   ];
 
+  const mockHarbours: Harbour[] = [
+    {
+      id: 'harbour-1',
+      type: 'wood' as const,
+      nodeIds: ['node-A', 'node-B'],
+      x: 5,
+      y: 0,
+      angle: 0
+    }
+  ];
+
   const mockHexes: Hex[] = [
     { id: 'hex-1', q: 0, r: 0, s: 0, resource: 'wood', numberToken: 8 },
     { id: 'hex-2', q: 1, r: -1, s: 0, resource: 'brick', numberToken: 4 },
@@ -43,6 +54,7 @@ describe('Catan Game Reducer', () => {
       ...initialState,
       nodes: mockNodes,
       hexes: mockHexes,
+      harbours: mockHarbours,
       currentPlayerIndex: 0,
       settlements: {},
       roads: {},
@@ -193,6 +205,37 @@ describe('Catan Game Reducer', () => {
       expect(state.roads[roadId]).toBeUndefined();
       expect(state.gameLog[0]).toContain('must connect');
     });
+
+    it('allocates harbours to users correctly when they build a settlement at one', () => {
+      mockState.phase = 'main';
+      mockState.setupActionRequired = 'none';
+      mockState.currentPlayerIndex = 0;
+
+      // Give required resources
+      mockState.players[0].resources = {
+        wood: 1,
+        brick: 1,
+        wheat: 1,
+        sheep: 1,
+        ore: 0
+      };
+
+      // Give connecting road
+      mockState.roads['node-A-node-B'] = {
+        id: 'node-A-node-B',
+        playerId: 0,
+        nodes: ['node-A', 'node-B']
+      };
+
+      const state = catanReducer(mockState, {
+        type: 'BUILD_SETTLEMENT',
+        payload: { nodeId: 'node-A', playerId: 0 },
+      });
+
+      expect(state.players[0].harbours).toHaveLength(1);
+      expect(state.players[0].harbours?.[0]).toEqual(mockHarbours[0]);
+  });
+
   });
 
   describe('Rolling Dice & Resources', () => {
@@ -227,7 +270,7 @@ describe('Catan Game Reducer', () => {
 
   describe('Game Setup - Robber', () => {
   it('places the robber on the desert tile at start', () => {
-    const state = createInitialState(4);
+    const state = createInitialState(2);
     
     // Find which hex is the desert in this specific random generation
     const desertHex = state.hexes.find(h => h.resource === 'desert');

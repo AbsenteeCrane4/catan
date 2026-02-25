@@ -1,5 +1,5 @@
-import { Hex, GameNode, HexResource } from "@/types/catan";
-import { HEX_SIZE, BASE_GAME_RESOURCES, BASE_GAME_TOKENS } from "@/lib/constants";
+import { Hex, GameNode, HexResource, Harbour, PortResource } from "@/types/catan";
+import { HEX_SIZE, BASE_GAME_RESOURCES, BASE_GAME_TOKENS, BASE_PORTS } from "@/lib/constants";
 
 export function hexToPixel(q: number, r: number) {
   const x = HEX_SIZE * (Math.sqrt(3) * q + (Math.sqrt(3) / 2) * r);
@@ -88,6 +88,64 @@ export function generateBoard(
       numberToken: resource === 'desert' ? null : randomizedTokens[tokenCounter++]
     };
   });
+}
+
+export function generateHarbours(nodes: GameNode[], portPool: PortResource[] = BASE_PORTS): Harbour[] {
+  // 1. Find all outer edges (two neighbors that share exactly ONE hex)
+  const coastalEdges: { n1: GameNode, n2: GameNode, midX: number, midY: number, angle: number }[] = [];
+  
+  nodes.forEach(n1 => {
+    n1.neighbors.forEach(neighborId => {
+      if (n1.id >= neighborId) return; // Prevent duplicates
+      const n2 = nodes.find(n => n.id === neighborId);
+      if (!n2) return;
+      
+      const sharedHexes = n1.hexIds.filter(id => n2.hexIds.includes(id));
+      if (sharedHexes.length === 1) { // It's on the coast!
+        const midX = (n1.pixelPos.x + n2.pixelPos.x) / 2;
+        const midY = (n1.pixelPos.y + n2.pixelPos.y) / 2;
+        const angle = Math.atan2(midY, midX);
+        coastalEdges.push({ n1, n2, midX, midY, angle });
+      }
+    });
+  });
+
+  // 2. Sort edges by angle to form a circular perimeter ring
+  coastalEdges.sort((a, b) => a.angle - b.angle);
+
+  // 3. Evenly distribute the ports along the ring
+  const harbours: Harbour[] = [];
+  const step = Math.floor(coastalEdges.length / portPool.length);
+  const shuffledPool = shuffle(portPool);
+
+  let poolIndex = 0;
+  let i = 0;
+  
+  while (poolIndex < shuffledPool.length && i < coastalEdges.length) {
+    const edge = coastalEdges[i];
+    
+    // Catan Rule: Ports cannot share a node (they must have space between them)
+    const nodesHavePort = harbours.some(h => 
+      h.nodeIds.includes(edge.n1.id) || h.nodeIds.includes(edge.n2.id)
+    );
+
+    if (!nodesHavePort) {
+      harbours.push({
+        id: `harbour-${poolIndex}`,
+        type: shuffledPool[poolIndex],
+        nodeIds: [edge.n1.id, edge.n2.id],
+        x: edge.midX,
+        y: edge.midY,
+        angle: edge.angle
+      });
+      poolIndex++;
+      i += step; // Jump forward
+    } else {
+      i++; // Move to the next edge if there's a conflict
+    }
+  }
+
+  return harbours;
 }
 
 export function getNodesForBoard(hexes: Hex[]): GameNode[] {

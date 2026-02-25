@@ -1,5 +1,6 @@
 export type ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore';
 export type HexResource = ResourceType | 'desert';
+export type PortResource = ResourceType | '3:1';
 export type PlayerColor = 'red' | 'blue' | 'white' | 'orange' | 'green' | 'brown' | 'purple' | 'gray';
 export type GamePhase = 'setup1' | 'setup2' | 'main';
 export type SetupAction = 'settlement' | 'road' | 'none';
@@ -18,6 +19,7 @@ export interface Player {
   color: PlayerColor;
   resources: Record<ResourceType, number>;
   victoryPoints: number;
+  harbours?: Harbour[]; // Added harbours owned by the player
 }
 
 export interface GameState {
@@ -30,6 +32,7 @@ export interface GameState {
   gameLog: string[];
   settlements: Record<string, Settlement>;
   nodes: GameNode[];
+  harbours: Harbour[];
   roads: Record<string, Road>;
   isGameOver: boolean;
   winnerId: number | null;
@@ -61,6 +64,15 @@ export interface TradeOffer {
   initiatorId: number;
   offer: Record<ResourceType, number>;
   request: Record<ResourceType, number>;
+}
+
+export interface Harbour {
+  id: string;
+  type: PortResource;
+  nodeIds: [string, string]; // The two Node IDs this harbour touches
+  x: number;
+  y: number;
+  angle: number;
 }
 
 export type GameAction = 

@@ -1,22 +1,26 @@
 import { GameState, GameAction, GameNode, ResourceType } from "@/types/catan";
-import { generateBoard, getNodesForBoard } from "@/lib/hex-utils";
+import { generateBoard, generateHarbours, getNodesForBoard } from "@/lib/hex-utils";
 import { PLAYER_COLORS } from "@/lib/constants";
 
 export const createInitialState = (radius = 2): GameState => {
   const hexes = generateBoard(radius);
+  const nodes = getNodesForBoard(hexes);
+  const harbours = generateHarbours(nodes);
   return {
     boardRadius: radius,
     hexes: hexes,
     robberHexId: hexes.find(h => h.resource === 'desert')?.id || '', // Place robber on desert
-    nodes: getNodesForBoard(hexes),
+    nodes: nodes,
     settlements: {},
     roads: {},
+    harbours: harbours,
     currentTradeOffer: null,
     players: Array.from({ length: 4 }).map((_, i) => ({
       id: i,
       color: PLAYER_COLORS[i % PLAYER_COLORS.length],
       resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }, // Start at 0!
       victoryPoints: 0,
+      harbours: [] // Initialize empty harbours for each player
     })),
     currentPlayerIndex: 0,
     diceRoll: null,
@@ -104,6 +108,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'ROLL_DICE': {
+      if (state.currentTradeOffer !== null) return state; // Prevent dice rolls during active trades
       if (state.phase !== 'main') {
         return { ...state, gameLog: ["Finish the setup phase before rolling!", ...state.gameLog] };
       }
@@ -191,6 +196,16 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
 
       updatedPlayers[playerId].victoryPoints += 1;
 
+      // Update harbours for player if settlement is on a harbour node
+      const harbour = state.harbours.find(h => h.nodeIds.includes(nodeId));
+      if (harbour) {
+        if (!updatedPlayers[playerId].harbours) {
+          updatedPlayers[playerId].harbours = [];
+        }
+        updatedPlayers[playerId].harbours.push(harbour);
+        state.gameLog.push(`Player ${playerId + 1} gained access to a ${harbour.type} harbour!`);
+      }
+
       return {
         ...state,
         settlements: { ...state.settlements, [nodeId]: { nodeId, playerId, isCity: false } },
@@ -271,7 +286,22 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       if (playerId !== state.currentPlayerIndex) return state;
 
       const player = state.players[playerId];
-      const cost = 4; // Standard 4:1 trade ratio
+      let cost = 4; // Standard 4:1 trade ratio
+
+      const playerNodes = Object.values(state.settlements)
+        .filter(s => s.playerId === playerId)
+        .map(s => s.nodeId);
+
+      const ownedPorts = state.harbours.filter(h => h.nodeIds.some(id => playerNodes.includes(id)));
+
+      ownedPorts.forEach(port => {
+        if (port.type === '3:1') {
+          cost = 3;
+        } else if (port.type === offerResource) {
+          cost = 2;
+        }
+      });
+
       if (player.resources[offerResource] < cost) {
         return { ...state, gameLog: [`Player ${playerId + 1} doesn't have enough ${offerResource}!`, ...state.gameLog] };
       }
