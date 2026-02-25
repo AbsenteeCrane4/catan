@@ -18,15 +18,15 @@ describe('Hex Math & Board Generation', () => {
   });
 
   it('maps nodes to unique pixel positions without duplicates', () => {
-    const hexes = generateBoard(1);
+    const hexes = generateBoard(2);
     const nodes = getNodesForBoard(hexes);
     
     const ids = nodes.map(n => n.id);
     const uniqueIds = new Set(ids);
     
-    // For a radius 1 board, there should be exactly 24 unique intersections
+    // For a radius 2 board, there should be exactly 54 unique intersections which match official Catan board
     expect(ids.length).toBe(uniqueIds.size);
-    expect(nodes.length).toBe(24);
+    expect(nodes.length).toBe(54);
     // Check for our new naming convention
     expect(nodes[0].id).toContain('node-');
   });

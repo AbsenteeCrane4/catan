@@ -4,7 +4,7 @@ import { GameState } from '@/types/catan';
 
 describe('Game Setup & Harbours', () => {
   it('generates the correct number of ports for the board', () => {
-    const state = createInitialState(4);
+    const state = createInitialState(2);
     // Standard radius 2 board has 9 ports
     expect(state.harbours).toHaveLength(9);
     // Ensure no two ports share the same node
@@ -18,16 +18,16 @@ describe('Catan Trading Logic', () => {
   let initialState: GameState;
 
   beforeEach(() => {
-    initialState = createInitialState(3); // 3 player game
+    initialState = createInitialState(2); // 3 player game
     // Give Player 1 some starting resources
     initialState.players[0].resources = { wood: 10, brick: 0, wheat: 0, sheep: 0, ore: 0 };
     // Give Player 2 some starting resources
     initialState.players[1].resources = { wood: 0, brick: 10, wheat: 0, sheep: 0, ore: 0 };
+    initialState.phase = 'main'; // Set phase to main for trading tests
   });
 
   describe('Bank Trades (4:1)', () => {
     it('should allow a 4:1 trade with the bank', () => {
-        initialState.phase = 'main';
       const action = {
         type: 'TRADE_WITH_BANK' as const,
         payload: { playerId: 0, offerResource: 'wood' as const, requestResource: 'sheep' as const }
@@ -40,7 +40,6 @@ describe('Catan Trading Logic', () => {
 
     it('allows a 3:1 port trade', () => {
       // Give player a settlement on the 3:1 port
-      initialState.phase = 'main';
       initialState.settlements['node-coast-3'] = { nodeId: 'node-coast-3', playerId: 0, isCity: false };
 
       // Assume node-coast-3 is on a 3:1 port for this test
@@ -64,7 +63,6 @@ describe('Catan Trading Logic', () => {
 
     it('allows a resource-specific port trade', () => {
       // Give player a settlement on the wood port
-      initialState.phase = 'main';
       initialState.settlements['node-coast-5'] = { nodeId: 'node-coast-5', playerId: 0, isCity: false };
 
       // Assume node-coast-5 is on a 2:1 wood port for this test
@@ -87,7 +85,6 @@ describe('Catan Trading Logic', () => {
     });
 
     it('should fail if the player tries to trade a resource they have none of', () => {
-      initialState.phase = 'main';
       const action = {
         type: 'TRADE_WITH_BANK' as const,
         payload: { playerId: 0, offerResource: 'brick' as const, requestResource: 'sheep' as const }
@@ -100,7 +97,6 @@ describe('Catan Trading Logic', () => {
 
     it('should fail if the player has fewer than 4 resources', () => {
       initialState.players[0].resources.wood = 3;
-      initialState.phase = 'main';
       const action = {
         type: 'TRADE_WITH_BANK' as const,
         payload: { playerId: 0, offerResource: 'wood' as const, requestResource: 'sheep' as const }
@@ -114,7 +110,6 @@ describe('Catan Trading Logic', () => {
 
   describe('Player-to-Player Trades', () => {
     it('should update currentTradeOffer when a trade is proposed', () => {
-      initialState.phase = 'main';
       const offer = {
         initiatorId: 0,
         offer: { wood: 2, brick: 0, wheat: 0, sheep: 0, ore: 0 },
@@ -126,7 +121,6 @@ describe('Catan Trading Logic', () => {
     });
 
     it('should execute resource swap when a trade is accepted', () => {
-      initialState.phase = 'main';
       // 1. Propose
       const offer = {
         initiatorId: 0,
@@ -151,7 +145,6 @@ describe('Catan Trading Logic', () => {
     });
 
     it('should block acceptance if the acceptor lacks resources', () => {
-      initialState.phase = 'main';
       const offer = {
         initiatorId: 0,
         offer: { wood: 1, brick: 0, wheat: 0, sheep: 0, ore: 0 },
