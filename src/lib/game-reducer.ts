@@ -11,6 +11,7 @@ export const createInitialState = (radius = 2): GameState => {
     nodes: getNodesForBoard(hexes),
     settlements: {},
     roads: {},
+    harbours: [], // Will be generated after nodes are created
     currentTradeOffer: null,
     players: Array.from({ length: 4 }).map((_, i) => ({
       id: i,
@@ -104,6 +105,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'ROLL_DICE': {
+      if (state.currentTradeOffer !== null) return state; // Prevent dice rolls during active trades
       if (state.phase !== 'main') {
         return { ...state, gameLog: ["Finish the setup phase before rolling!", ...state.gameLog] };
       }
@@ -271,7 +273,22 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       if (playerId !== state.currentPlayerIndex) return state;
 
       const player = state.players[playerId];
-      const cost = 4; // Standard 4:1 trade ratio
+      let cost = 4; // Standard 4:1 trade ratio
+
+      const playerNodes = Object.values(state.settlements)
+        .filter(s => s.playerId === playerId)
+        .map(s => s.nodeId);
+
+      const ownedPorts = state.harbours.filter(h => h.nodeIds.some(id => playerNodes.includes(id)));
+
+      ownedPorts.forEach(port => {
+        if (port.type === '3:1') {
+          cost = 3;
+        } else if (port.type === offerResource) {
+          cost = 2;
+        }
+      });
+
       if (player.resources[offerResource] < cost) {
         return { ...state, gameLog: [`Player ${playerId + 1} doesn't have enough ${offerResource}!`, ...state.gameLog] };
       }

@@ -1,4 +1,4 @@
-import { ResourceType, PlayerColor, HexResource } from "@/types/catan";
+import { ResourceType, PlayerColor, HexResource, PortResource } from "@/types/catan";
 
 export const HEX_SIZE = 50;
 export const HEX_WIDTH = Math.sqrt(3) * HEX_SIZE;
@@ -27,3 +27,4 @@ export const BASE_GAME_RESOURCES: HexResource[] = [
 ];
 
 export const BASE_GAME_TOKENS = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];
+export const BASE_PORTS: PortResource[] = ['3:1', '3:1', '3:1', '3:1', 'wood', 'brick', 'wheat', 'sheep', 'ore'];
