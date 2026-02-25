@@ -19,6 +19,7 @@ export interface Player {
   color: PlayerColor;
   resources: Record<ResourceType, number>;
   victoryPoints: number;
+  harbours?: Harbour[]; // Added harbours owned by the player
 }
 
 export interface GameState {

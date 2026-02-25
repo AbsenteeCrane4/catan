@@ -16,6 +16,14 @@ interface TradeUIProps {
   onCancelTrade: () => void;
 }
 
+// Helper to determine the best ratio based on owned harbors
+const getRequiredRatio = (resource: ResourceType, harbors?: string[]) => {
+  if (!harbors) return 4;
+  if (harbors.includes(resource)) return 2; // Owns 2:1 for this specific resource
+  if (harbors.includes('3:1')) return 3; // Owns generic 3:1
+  return 4; // Default
+};
+
 export function TradeUI({
   localPlayerId,
   currentPlayerIndex,
@@ -55,6 +63,26 @@ export function TradeUI({
       request: requestMap
     });
   };
+
+  // --- Calculate Dynamic Bank Trade Variables ---
+  let validOfferRes: ResourceType | undefined;
+  let bestRatio = 4;
+
+  for (const [res, count] of Object.entries(offerMap)) {
+    const resource = res as ResourceType;
+    // Note: Ensure your Player type has a 'harbors' array of strings. 
+    const harbourTypes = localPlayer.harbours?.map(h => h.type);
+    const requiredRatio = getRequiredRatio(resource, harbourTypes);
+    
+    if (count >= requiredRatio) {
+      validOfferRes = resource;
+      bestRatio = requiredRatio;
+      break; 
+    }
+  }
+
+  const validReqRes = Object.keys(requestMap).find(k => requestMap[k as ResourceType] > 0) as ResourceType;
+  const canTradeWithBank = validOfferRes && validReqRes;
 
   // --- VIEW 1: Someone else has proposed a trade ---
   if (currentTradeOffer) {
@@ -159,16 +187,15 @@ export function TradeUI({
           Propose to Players
         </button>
         
-        {Object.entries(offerMap).some(([_, v]) => v >= 4) && (
+        {/* Updated Bank Trade Button */}
+        {canTradeWithBank && (
           <button 
             onClick={() => {
-              const offerRes = Object.keys(offerMap).find(k => offerMap[k as ResourceType] >= 4) as ResourceType;
-              const reqRes = Object.keys(requestMap).find(k => requestMap[k as ResourceType] > 0) as ResourceType;
-              if (offerRes && reqRes) onTradeWithBank(offerRes, reqRes);
+              if (validOfferRes && validReqRes) onTradeWithBank(validOfferRes, validReqRes);
             }}
             className="w-full bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 py-2 rounded text-[10px] font-bold border border-amber-600/50 transition-all"
           >
-            Bank Trade (4:1)
+            Bank Trade ({bestRatio}:1)
           </button>
         )}
       </div>

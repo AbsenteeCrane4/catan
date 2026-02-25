@@ -20,6 +20,7 @@ export const createInitialState = (radius = 2): GameState => {
       color: PLAYER_COLORS[i % PLAYER_COLORS.length],
       resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }, // Start at 0!
       victoryPoints: 0,
+      harbours: [] // Initialize empty harbours for each player
     })),
     currentPlayerIndex: 0,
     diceRoll: null,
@@ -194,6 +195,16 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       }
 
       updatedPlayers[playerId].victoryPoints += 1;
+
+      // Update harbours for player if settlement is on a harbour node
+      const harbour = state.harbours.find(h => h.nodeIds.includes(nodeId));
+      if (harbour) {
+        if (!updatedPlayers[playerId].harbours) {
+          updatedPlayers[playerId].harbours = [];
+        }
+        updatedPlayers[playerId].harbours.push(harbour);
+        state.gameLog.push(`Player ${playerId + 1} gained access to a ${harbour.type} harbour!`);
+      }
 
       return {
         ...state,
