@@ -9,6 +9,7 @@ interface Props {
   currentPlayerIndex: number;
   myPlayerIndex: number;
   diceRoll: number | null;
+  longestRoad: { playerId: number | null; length: number };
   onRoll: () => void;
   onEndTurn: () => void;
 }
@@ -18,6 +19,7 @@ export function PlayerSidebar({
   currentPlayerIndex, 
   myPlayerIndex, 
   diceRoll, 
+  longestRoad,
   onRoll, 
   onEndTurn 
 }: Props) {
@@ -99,6 +101,14 @@ export function PlayerSidebar({
             </div>
           </div>
         ))}
+      </div>
+
+      <div>
+        {longestRoad.playerId !== null && (
+          <div className="bg-orange-600/20 border border-orange-500 text-orange-400 p-2 rounded text-xs font-bold text-center mt-4">
+            👑 Player {longestRoad.playerId + 1} holds the Longest Road ({longestRoad.length})
+          </div>
+        )}
       </div>
     </aside>
   );
