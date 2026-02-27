@@ -150,7 +150,7 @@ export function evaluateLongestRoad(state: any) {
 
   // Handle VP Updates and Logs
   let updatedPlayers = [...players];
-  let logs: string[] = [];
+  const logs: string[] = [];
 
   if (newHolderId !== currentHolderId) {
     // Deduct points from loser
@@ -390,7 +390,6 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         if (nextPlayer === state.players.length - 1) {
           nextPhase = 'setup2';
           nextAction = 'settlement';
-          // Last player goes again, so index stays the same
         } else {
           nextPlayer++;
           nextAction = 'settlement';
@@ -399,24 +398,43 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         if (nextPlayer === 0) {
           nextPhase = 'main';
           nextAction = 'none';
-          // Game begins normally with Player 1
         } else {
           nextPlayer--;
           nextAction = 'settlement';
         }
       }
 
-      return {
+      const updatedPlayers = state.players.map(p => p.id === playerId ? {
+        ...p,
+        resources: isInitial ? p.resources : { ...p.resources, wood: p.resources.wood - 1, brick: p.resources.brick - 1 }
+      } : p);
+
+      // 3. Create draft state
+      const draftState = {
         ...state,
+        roads: { ...state.roads, [roadId]: { id: roadId, playerId, nodes: [nodeId1, nodeId2] as [string, string] } },
+        players: updatedPlayers,
+      };
+
+      // 4. Evaluate Longest Road (Converting roads object to array)
+      const evaluation = evaluateLongestRoad({
+        ...draftState,
+        roads: Object.values(draftState.roads)
+      });
+
+      // 5. Return final state
+      return {
+        ...draftState,
         phase: nextPhase,
         currentPlayerIndex: nextPlayer,
         setupActionRequired: nextAction,
-        roads: { ...state.roads, [roadId]: { id: roadId, playerId, nodes: [nodeId1, nodeId2] } },
-        players: state.players.map(p => p.id === playerId ? {
-          ...p,
-          resources: isInitial ? p.resources : { ...p.resources, wood: p.resources.wood - 1, brick: p.resources.brick - 1 }
-        } : p),
-        gameLog: [`Player ${playerId + 1} built a road.`, ...state.gameLog]
+        players: evaluation.players,
+        longestRoadOwnerId: evaluation.longestRoad,
+        gameLog: [
+          `Player ${playerId + 1} built a road.`,
+          ...evaluation.logs,
+          ...state.gameLog
+        ]
       };
     }
 
