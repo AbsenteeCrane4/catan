@@ -1,9 +1,10 @@
 export type ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore';
 export type HexResource = ResourceType | 'desert';
 export type PortResource = ResourceType | '3:1';
-export type PlayerColor = 'red' | 'blue' | 'white' | 'orange' | 'green' | 'brown' | 'purple' | 'gray';
+export type PlayerColor = 'red' | 'blue' | 'brown' | 'orange' | 'green' | 'white' | 'purple';
 export type GamePhase = 'setup1' | 'setup2' | 'main';
 export type SetupAction = 'settlement' | 'road' | 'none';
+export type DevelopmentCardType = 'Knight' | 'Victory Point' | 'Road Building' | 'Year of Plenty' | 'Monopoly';
 
 export interface Hex {
   q: number;
@@ -34,6 +35,7 @@ export interface GameState {
   nodes: GameNode[];
   harbours: Harbour[];
   roads: Record<string, Road>;
+  longestRoadOwnerId: { playerId: number | null; length: number };
   isGameOver: boolean;
   winnerId: number | null;
   phase: GamePhase;

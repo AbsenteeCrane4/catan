@@ -13,6 +13,7 @@ export const createInitialState = (radius = 2): GameState => {
     nodes: nodes,
     settlements: {},
     roads: {},
+    longestRoadOwnerId: { playerId: null, length: 4 }, // Start with 4 so players can beat it with a 5-road longest road
     harbours: harbours,
     currentTradeOffer: null,
     players: Array.from({ length: 4 }).map((_, i) => ({
@@ -54,6 +55,128 @@ function isNodeConnectedToPlayerRoad(nodeId: string, roads: Record<string, any>,
   return Object.values(roads).some(road => 
     road.playerId === playerId && (road.nodes[0] === nodeId || road.nodes[1] === nodeId)
   );
+}
+
+function getLongestRoadForPlayer(playerId: number, roads: any[], settlements: Record<string, any>) {
+  const playerRoads = roads.filter(r => r.playerId === playerId);
+  if (playerRoads.length === 0) return 0;
+
+  // Build an adjacency list (Graph) of the player's road network
+  const adj: Record<string, { to: string, roadId: number }[]> = {};
+  playerRoads.forEach((r, idx) => {
+    if (!adj[r.nodeId1]) adj[r.nodeId1] = [];
+    if (!adj[r.nodeId2]) adj[r.nodeId2] = [];
+    adj[r.nodeId1].push({ to: r.nodeId2, roadId: idx });
+    adj[r.nodeId2].push({ to: r.nodeId1, roadId: idx });
+  });
+
+  let maxPath = 0;
+
+  // DFS to explore all valid paths
+  function dfs(currentNode: string, visitedEdges: Set<number>, currentLength: number) {
+    if (currentLength > maxPath) maxPath = currentLength;
+
+    // RULE CHECK: If this node has an OPPONENT'S settlement/city, the road is broken!
+    const building = settlements[currentNode];
+    if (building && building.playerId !== playerId) {
+      return; // Stop exploring further from this node
+    }
+
+    const edges = adj[currentNode] || [];
+    for (const edge of edges) {
+      if (!visitedEdges.has(edge.roadId)) {
+        visitedEdges.add(edge.roadId);
+        dfs(edge.to, visitedEdges, currentLength + 1);
+        visitedEdges.delete(edge.roadId); // Backtrack
+      }
+    }
+  }
+
+  // Run DFS from every node in the player's network to find the absolute maximum
+  for (const node of Object.keys(adj)) {
+    dfs(node, new Set(), 0);
+  }
+
+  return maxPath;
+}
+
+export function evaluateLongestRoad(state: any) {
+  const { roads, settlements, longestRoad, players } = state;
+  const playerRoadLengths = players.map((p: any) => ({
+    playerId: p.id,
+    length: getLongestRoadForPlayer(p.id, roads, settlements)
+  }));
+
+  const maxLength = Math.max(...playerRoadLengths.map((p: any) => p.length));
+  const candidates = playerRoadLengths.filter((p: any) => p.length === maxLength);
+  
+  const currentHolderId = longestRoad?.playerId ?? null;
+  const previousLength = longestRoad?.length ?? 4;
+
+  let newHolderId = currentHolderId;
+  let newLength = previousLength;
+
+  // Standard Catan Logic Evaluation
+  if (maxLength < 5) {
+    newHolderId = null; // Nobody qualifies
+    newLength = 4;
+  } else {
+    const holderCandidate = candidates.find((c: { playerId: any; }) => c.playerId === currentHolderId);
+
+    if (holderCandidate) {
+      // Current holder is STILL tied for max or is sole max
+      if (candidates.length === 1) {
+        newLength = maxLength; // Sole max, update length
+      } else {
+        // Tie scenario! Did the holder just get broken to reach this tie?
+        if (maxLength < previousLength) {
+          newHolderId = null; // Broken into a tie. Card goes to the bank.
+          newLength = maxLength;
+        } else {
+          newLength = maxLength; // Someone tied them, but holder keeps it.
+        }
+      }
+    } else {
+      // Current holder was beaten strictly, OR their road broke and someone else is max
+      if (candidates.length === 1) {
+        newHolderId = candidates[0].playerId; // New undisputed champion
+        newLength = maxLength;
+      } else {
+        newHolderId = null; // Multiple people tied for new longest. Card goes to bank.
+        newLength = maxLength;
+      }
+    }
+  }
+
+  // Handle VP Updates and Logs
+  let updatedPlayers = [...players];
+  let logs: string[] = [];
+
+  if (newHolderId !== currentHolderId) {
+    // Deduct points from loser
+    if (currentHolderId !== null) {
+      updatedPlayers = updatedPlayers.map(p => 
+        p.id === currentHolderId ? { ...p, victoryPoints: p.victoryPoints - 2 } : p
+      );
+      logs.push(`Player ${currentHolderId + 1} lost the Longest Road.`);
+    }
+    // Add points to winner
+    if (newHolderId !== null) {
+      updatedPlayers = updatedPlayers.map(p => 
+        p.id === newHolderId ? { ...p, victoryPoints: p.victoryPoints + 2 } : p
+      );
+      logs.push(`Player ${newHolderId + 1} claimed the Longest Road! (+2 VP)`);
+    }
+  } else if (newHolderId !== null && newLength > previousLength) {
+    // Optional: Log when the current holder extends their undisputed record
+    logs.push(`Player ${newHolderId + 1} extended the Longest Road to ${newLength}.`);
+  }
+
+  return {
+    players: updatedPlayers,
+    longestRoad: { playerId: newHolderId, length: newLength },
+    logs
+  };
 }
 
 export function catanReducer(state: GameState, action: GameAction): GameState {
@@ -196,22 +319,40 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
 
       updatedPlayers[playerId].victoryPoints += 1;
 
-      // Update harbours for player if settlement is on a harbour node
+      let harbourLog = null;
       const harbour = state.harbours.find(h => h.nodeIds.includes(nodeId));
       if (harbour) {
-        if (!updatedPlayers[playerId].harbours) {
-          updatedPlayers[playerId].harbours = [];
+        const playerHarbours = updatedPlayers[playerId].harbours || [];
+        const alreadyOwned = playerHarbours.some(h => h.id === harbour.id);
+        if (!alreadyOwned) {
+          updatedPlayers[playerId].harbours = [...playerHarbours, harbour];
+          harbourLog = `Player ${playerId + 1} gained access to a ${harbour.type} harbour!`;
         }
-        updatedPlayers[playerId].harbours.push(harbour);
-        state.gameLog.push(`Player ${playerId + 1} gained access to a ${harbour.type} harbour!`);
       }
 
-      return {
+      const newSettlements = { ...state.settlements, [nodeId]: { nodeId, playerId, isCity: false } };
+      const draftState = {
         ...state,
-        settlements: { ...state.settlements, [nodeId]: { nodeId, playerId, isCity: false } },
+        settlements: newSettlements, // Must include the new settlement so it can "break" opponent roads!
         players: updatedPlayers,
+      };
+
+      const evaluation = evaluateLongestRoad({
+        ...draftState,
+        roads: Object.values(draftState.roads)
+      });
+
+      return {
+        ...draftState,
+        players: evaluation.players,
+        longestRoadOwnerId: evaluation.longestRoad,
         setupActionRequired: isInitial ? 'road' : state.setupActionRequired,
-        gameLog: [`Player ${playerId + 1} built a settlement.`, ...state.gameLog]
+        gameLog: [
+          `Player ${playerId + 1} built a settlement.`,
+          ...(harbourLog ? [harbourLog] : []),
+          ...evaluation.logs,
+          ...state.gameLog
+        ]
       };
     }
 
