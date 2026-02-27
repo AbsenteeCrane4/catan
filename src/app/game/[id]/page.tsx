@@ -42,7 +42,7 @@ export default function CatanPage({ params }: PageProps) {
         currentPlayerIndex={state.currentPlayerIndex}
         myPlayerIndex={myPlayerIndex}
         diceRoll={state.diceRoll}
-        longestRoad={state.longestRoadOwnerId}
+        longestRoad={state.longestRoad}
         onRoll={() => performAction({ type: 'ROLL_DICE' })}
         onEndTurn={() => performAction({ type: 'END_TURN' })}
       />

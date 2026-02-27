@@ -13,13 +13,14 @@ export const createInitialState = (radius = 2): GameState => {
     nodes: nodes,
     settlements: {},
     roads: {},
-    longestRoadOwnerId: { playerId: null, length: 4 }, // Start with 4 so players can beat it with a 5-road longest road
+    longestRoad: { playerId: null, length: 4 }, // Start with 4 so players can beat it with a 5-road longest road
     harbours: harbours,
     currentTradeOffer: null,
     players: Array.from({ length: 4 }).map((_, i) => ({
       id: i,
       color: PLAYER_COLORS[i % PLAYER_COLORS.length],
       resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }, // Start at 0!
+      longestRoadLength: 0,
       victoryPoints: 0,
       harbours: [] // Initialize empty harbours for each player
     })),
@@ -100,76 +101,53 @@ function getLongestRoadForPlayer(playerId: number, roads: any[], settlements: Re
   return maxPath;
 }
 
-export function evaluateLongestRoad(state: any) {
-  const { roads, settlements, longestRoad, players } = state;
-  const playerRoadLengths = players.map((p: any) => ({
-    playerId: p.id,
-    length: getLongestRoadForPlayer(p.id, roads, settlements)
-  }));
-
-  const maxLength = Math.max(...playerRoadLengths.map((p: any) => p.length));
-  const candidates = playerRoadLengths.filter((p: any) => p.length === maxLength);
+export function evaluateLongestRoad(state: GameState, affectedPlayerIds: number[]) {
+  const { roads, settlements, players, longestRoad } = state;
   
-  const currentHolderId = longestRoad?.playerId ?? null;
-  const previousLength = longestRoad?.length ?? 4;
+  const currentHolderId = longestRoad.playerId;
+  const currentRecordLength = longestRoad.length;
 
+  let updatedPlayers = [...players];
+  let logs: string[] = [];
+
+  affectedPlayerIds.forEach(playerId => {
+    const newLength = getLongestRoadForPlayer(playerId, Object.values(roads), settlements);
+    updatedPlayers[playerId] = { ...updatedPlayers[playerId], longestRoadLength: newLength };
+  });
+
+  const maxLength = Math.max(...updatedPlayers.map(p => p.longestRoadLength), 0);
+  const candidates = updatedPlayers.filter(p => p.longestRoadLength === maxLength);
+  
   let newHolderId = currentHolderId;
-  let newLength = previousLength;
+  let newLength = maxLength < 5 ? 0 : maxLength;
 
-  // Standard Catan Logic Evaluation
   if (maxLength < 5) {
-    newHolderId = null; // Nobody qualifies
-    newLength = 4;
+    newHolderId = null; 
   } else {
-    const holderCandidate = candidates.find((c: { playerId: any; }) => c.playerId === currentHolderId);
+    const holderCandidate = candidates.find(c => c.id === currentHolderId);
 
     if (holderCandidate) {
-      // Current holder is STILL tied for max or is sole max
-      if (candidates.length === 1) {
-        newLength = maxLength; // Sole max, update length
-      } else {
-        // Tie scenario! Did the holder just get broken to reach this tie?
-        if (maxLength < previousLength) {
-          newHolderId = null; // Broken into a tie. Card goes to the bank.
-          newLength = maxLength;
-        } else {
-          newLength = maxLength; // Someone tied them, but holder keeps it.
-        }
-      }
+      newHolderId = currentHolderId; 
     } else {
-      // Current holder was beaten strictly, OR their road broke and someone else is max
       if (candidates.length === 1) {
-        newHolderId = candidates[0].playerId; // New undisputed champion
-        newLength = maxLength;
+        newHolderId = candidates[0].id;
       } else {
-        newHolderId = null; // Multiple people tied for new longest. Card goes to bank.
-        newLength = maxLength;
+        newHolderId = null;
       }
     }
   }
 
-  // Handle VP Updates and Logs
-  let updatedPlayers = [...players];
-  const logs: string[] = [];
-
   if (newHolderId !== currentHolderId) {
-    // Deduct points from loser
     if (currentHolderId !== null) {
-      updatedPlayers = updatedPlayers.map(p => 
-        p.id === currentHolderId ? { ...p, victoryPoints: p.victoryPoints - 2 } : p
-      );
+      updatedPlayers[currentHolderId].victoryPoints -= 2;
       logs.push(`Player ${currentHolderId + 1} lost the Longest Road.`);
     }
-    // Add points to winner
     if (newHolderId !== null) {
-      updatedPlayers = updatedPlayers.map(p => 
-        p.id === newHolderId ? { ...p, victoryPoints: p.victoryPoints + 2 } : p
-      );
-      logs.push(`Player ${newHolderId + 1} claimed the Longest Road! (+2 VP)`);
+      updatedPlayers[newHolderId].victoryPoints += 2;
+      logs.push(`Player ${newHolderId + 1} claimed the Longest Road with a length of ${maxLength}! (+2 VP)`);
     }
-  } else if (newHolderId !== null && newLength > previousLength) {
-    // Optional: Log when the current holder extends their undisputed record
-    logs.push(`Player ${newHolderId + 1} extended the Longest Road to ${newLength}.`);
+  } else if (newHolderId !== null && maxLength > currentRecordLength) {
+    logs.push(`Player ${newHolderId + 1} extended the Longest Road to ${maxLength}!`);
   }
 
   return {
@@ -337,15 +315,16 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         players: updatedPlayers,
       };
 
-      const evaluation = evaluateLongestRoad({
-        ...draftState,
-        roads: Object.values(draftState.roads)
-      });
+      const touchingRoads = Object.values(draftState.roads).filter(r => r.nodes.includes(nodeId));
+
+      const affectedPlayerIds = [...new Set(touchingRoads.map(r => r.playerId))];
+
+      const evaluation = evaluateLongestRoad(draftState, affectedPlayerIds);
 
       return {
         ...draftState,
         players: evaluation.players,
-        longestRoadOwnerId: evaluation.longestRoad,
+        longestRoad: evaluation.longestRoad,
         setupActionRequired: isInitial ? 'road' : state.setupActionRequired,
         gameLog: [
           `Player ${playerId + 1} built a settlement.`,
@@ -416,11 +395,8 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         players: updatedPlayers,
       };
 
-      // 4. Evaluate Longest Road (Converting roads object to array)
-      const evaluation = evaluateLongestRoad({
-        ...draftState,
-        roads: Object.values(draftState.roads)
-      });
+      // 4. Evaluate Longest Road
+      const evaluation = evaluateLongestRoad(draftState, [playerId]);
 
       // 5. Return final state
       return {
@@ -429,7 +405,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         currentPlayerIndex: nextPlayer,
         setupActionRequired: nextAction,
         players: evaluation.players,
-        longestRoadOwnerId: evaluation.longestRoad,
+        longestRoad: evaluation.longestRoad,
         gameLog: [
           `Player ${playerId + 1} built a road.`,
           ...evaluation.logs,

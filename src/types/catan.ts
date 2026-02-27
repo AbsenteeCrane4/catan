@@ -19,6 +19,7 @@ export interface Player {
   id: number;
   color: PlayerColor;
   resources: Record<ResourceType, number>;
+  longestRoadLength: number;
   victoryPoints: number;
   harbours?: Harbour[]; // Added harbours owned by the player
 }
@@ -35,7 +36,7 @@ export interface GameState {
   nodes: GameNode[];
   harbours: Harbour[];
   roads: Record<string, Road>;
-  longestRoadOwnerId: { playerId: number | null; length: number };
+  longestRoad: { playerId: number | null; length: number };
   isGameOver: boolean;
   winnerId: number | null;
   phase: GamePhase;
