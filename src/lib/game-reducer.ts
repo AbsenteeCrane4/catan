@@ -111,8 +111,8 @@ export function evaluateLongestRoad(state: GameState, affectedPlayerIds: number[
   const currentHolderId = longestRoad.playerId;
   const currentRecordLength = longestRoad.length;
 
-  let updatedPlayers = [...players];
-  let logs: string[] = [];
+  const updatedPlayers = [...players];
+  const logs: string[] = [];
 
   affectedPlayerIds.forEach(playerId => {
     const newLength = getLongestRoadForPlayer(playerId, Object.values(roads), settlements);
@@ -123,7 +123,7 @@ export function evaluateLongestRoad(state: GameState, affectedPlayerIds: number[
   const candidates = updatedPlayers.filter(p => p.longestRoadLength === maxLength);
   
   let newHolderId = currentHolderId;
-  let newLength = maxLength < 5 ? 0 : maxLength;
+  const newLength = maxLength < 5 ? 0 : maxLength;
 
   if (maxLength < 5) {
     newHolderId = null; 
