@@ -64,11 +64,15 @@ function getLongestRoadForPlayer(playerId: number, roads: any[], settlements: Re
 
   // Build an adjacency list (Graph) of the player's road network
   const adj: Record<string, { to: string, roadId: number }[]> = {};
-  playerRoads.forEach((r, idx) => {
-    if (!adj[r.nodeId1]) adj[r.nodeId1] = [];
-    if (!adj[r.nodeId2]) adj[r.nodeId2] = [];
-    adj[r.nodeId1].push({ to: r.nodeId2, roadId: idx });
-    adj[r.nodeId2].push({ to: r.nodeId1, roadId: idx });
+  playerRoads.forEach((r) => {
+    const n1 = r.nodes[0];
+    const n2 = r.nodes[1];
+
+    if (!adj[n1]) adj[n1] = [];
+    if (!adj[n2]) adj[n2] = [];
+
+    adj[n1].push({ to: n2, roadId: r.id });
+    adj[n2].push({ to: n1, roadId: r.id });
   });
 
   let maxPath = 0;
