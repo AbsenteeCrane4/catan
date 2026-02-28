@@ -97,8 +97,19 @@ function getLongestRoadForPlayer(playerId: number, roads: any[], settlements: Re
     }
   }
 
-  // Run DFS from every node in the player's network to find the absolute maximum
-  for (const node of Object.keys(adj)) {
+  let startNodes = Object.keys(adj).filter(node => {
+    const degree = adj[node].length;    
+    const hasOpponentBuilding = settlements[node] && settlements[node].playerId !== playerId;
+    return degree !== 2 || hasOpponentBuilding;
+  });
+
+  // If all nodes have degree 2 and no opponent buildings, it means we have a perfect loop. In that case, every single node will have a degree of 2. If so, just pick the first node to start.
+  if (startNodes.length === 0 && Object.keys(adj).length > 0) {
+    startNodes = [Object.keys(adj)[0]];
+  }
+
+  // Run DFS only from our heavily reduced list of starting points
+  for (const node of startNodes) {
     dfs(node, new Set(), 0);
   }
 
