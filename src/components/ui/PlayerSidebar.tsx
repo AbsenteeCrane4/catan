@@ -3,6 +3,7 @@ import { RESOURCE_COLORS } from "@/lib/constants";
 import { Users, Dice5, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
 import { DiceRoll } from "./DiceRoll"; // Import your animation component
+import { Road } from "./Road"; // Import the Road icon component
 
 interface Props {
   players: Player[];
@@ -13,6 +14,16 @@ interface Props {
   onRoll: () => void;
   onEndTurn: () => void;
 }
+
+const playerColors = {
+  red: 'bg-red-700',
+  blue: 'bg-blue-700',
+  white: 'bg-slate-200',
+  orange: 'bg-amber-500',
+  green: 'bg-emerald-600',
+  brown: 'bg-amber-900',
+  purple: 'bg-purple-700',
+};
 
 export function PlayerSidebar({ 
   players, 
@@ -88,6 +99,7 @@ export function PlayerSidebar({
               <span className="font-bold text-sm flex items-center gap-2" style={{ color: p.color }}>
                 <Users size={14} /> Player {idx + 1}
               </span>
+              <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400"><Road color={playerColors[p.color]} /> {p.longestRoadLength}</span>
               <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400">VP: {p.victoryPoints}</span>
             </div>
 
