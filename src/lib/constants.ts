@@ -15,7 +15,7 @@ export const RESOURCE_COLORS: Record<HexResource, string> = {
 
 export const RESOURCE_TYPES: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
 
-export const PLAYER_COLORS: PlayerColor[] = ['red', 'blue', 'white', 'orange', 'green', 'brown', 'purple', 'gray'];
+export const PLAYER_COLORS: PlayerColor[] = ['red', 'blue', 'white', 'orange', 'green', 'brown', 'purple'];
 
 export const BASE_GAME_RESOURCES: HexResource[] = [
   'wood', 'wood', 'wood', 'wood',

@@ -42,6 +42,7 @@ export default function CatanPage({ params }: PageProps) {
         currentPlayerIndex={state.currentPlayerIndex}
         myPlayerIndex={myPlayerIndex}
         diceRoll={state.diceRoll}
+        longestRoad={state.longestRoad}
         onRoll={() => performAction({ type: 'ROLL_DICE' })}
         onEndTurn={() => performAction({ type: 'END_TURN' })}
       />
@@ -94,7 +95,7 @@ export default function CatanPage({ params }: PageProps) {
         <div className="flex-1 p-4 flex flex-col overflow-hidden">
           <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-4">Event Log</h2>
           <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-            {[...state.gameLog].reverse().map((log, i) => (
+            {[...state.gameLog].map((log, i) => (
               <div key={i} className="text-[10px] font-mono text-slate-500 border-l border-slate-800 pl-2 leading-relaxed animate-in fade-in slide-in-from-left-1">
                 <span className="text-slate-700">#</span> {log}
               </div>
