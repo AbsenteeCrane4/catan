@@ -1,5 +1,10 @@
 # Catan
 
+### Workflow Badges
+
+[![Catan Unit Tests and Build Pipeline](https://github.com/AbsenteeCrane4/catan/actions/workflows/ci.yml/badge.svg)](https://github.com/AbsenteeCrane4/catan/actions/workflows/ci.yml)
+
+---
 A real-time multiplayer implementation of the classic **Settlers of Catan** built using:
 
 * **Next.js** – Frontend and server framework
@@ -7,7 +12,7 @@ A real-time multiplayer implementation of the classic **Settlers of Catan** buil
 * **Node.js** – Backend runtime
 * **Vitest** – Unit testing
 * **Docker** – Containerisation
-* **GitHub Actions** – Automated CI/CD pipeline [![Catan Unit Tests and Build Pipeline](https://github.com/AbsenteeCrane4/catan/actions/workflows/ci.yml/badge.svg)](https://github.com/AbsenteeCrane4/catan/actions/workflows/ci.yml)
+* **GitHub Actions** – Automated CI/CD pipeline
 
 ---
 
