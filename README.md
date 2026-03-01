@@ -89,7 +89,7 @@ This will generate the production build in:
 
 ```bash
 .next/
-dist-server
+dist-server/
 ```
 
 ## Run the production build locally
@@ -138,6 +138,18 @@ docker stop catan-container
 
 ```bash
 docker rm catan-container
+```
+
+## Add contianer to GitHub Container Registry (GHCR)
+To be able to use the GHCR you need to Generate a Personal Access Token (PAT) and then login via the cmd:
+
+`echo YOUR_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin`
+
+Once you are Authenticated you can build and push docker images up to the GHCR
+
+```bash
+docker build -t ghcr.io/<github-username>/catan:<tag-name> .
+docker push ghcr.io/<github-username>/catan:<tag-name>
 ```
 
 ---
