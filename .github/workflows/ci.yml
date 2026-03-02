@@ -93,6 +93,9 @@ jobs:
             # This captures any tag name
             type=ref,event=tag
 
+            # Add a the short SHA as a tag for traceability when pushing to the main branch without a tag
+            type=sha,format=short
+
       - name: Build and Push to GHCR
         uses: docker/build-push-action@v5
         with:
