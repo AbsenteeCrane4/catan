@@ -1,0 +1,22 @@
+# Dependency directories
+node_modules
+npm-debug.log
+
+# Build outputs
+.next
+out
+dist
+dist-server
+
+# Debugging and IDEs
+.vscode
+.idea
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+.dockerignore
