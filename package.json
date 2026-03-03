@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "next build",
+    "build:server": "tsup server.ts --format cjs --clean --minify --out-dir dist-server",
+    "build": "next build && npm run build:server",
     "start": "cross-env NODE_ENV=production tsx server.ts",
     "test": "vitest",
     "lint": "eslint"
@@ -35,6 +36,7 @@
     "eslint-config-next": "16.1.6",
     "jsdom": "^28.1.0",
     "tailwindcss": "^4",
+    "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.0.18"

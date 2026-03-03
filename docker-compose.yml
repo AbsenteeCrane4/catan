@@ -1,0 +1,9 @@
+services:
+  catan-app:
+    image: ghcr.io/absenteecrane4/catan:latest
+    container_name: catan_production
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
