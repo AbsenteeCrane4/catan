@@ -45,6 +45,8 @@ export default function CatanPage({ params }: PageProps) {
         longestRoad={state.longestRoad}
         onRoll={() => performAction({ type: 'ROLL_DICE' })}
         onEndTurn={() => performAction({ type: 'END_TURN' })}
+        hasPlayedDevCardThisTurn={state.hasPlayedDevCardThisTurn}
+        onPlayDevCard={(cardType) => performAction({ type: 'PLAY_DEV_CARD', payload: { playerId: myPlayerIndex, cardType: cardType}})}
       />
 
       {/* Center: The Map */}
@@ -87,6 +89,9 @@ export default function CatanPage({ params }: PageProps) {
             }
             onCancelTrade={() => 
               performAction({ type: 'CANCEL_TRADE', payload: {} })
+            }
+            onBuyDevCard={() => 
+              performAction({ type: 'BUY_DEV_CARD', payload: { playerId: myPlayerIndex }})
             }
           />
         </div>
