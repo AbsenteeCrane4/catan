@@ -4,7 +4,7 @@ export type PortResource = ResourceType | '3:1';
 export type PlayerColor = 'red' | 'blue' | 'brown' | 'orange' | 'green' | 'white' | 'purple';
 export type GamePhase = 'setup1' | 'setup2' | 'main';
 export type SetupAction = 'settlement' | 'road' | 'none';
-export type DevelopmentCardType = 'Knight' | 'Victory Point' | 'Road Building' | 'Year of Plenty' | 'Monopoly';
+export type DevelopmentCardType = 'knight' | 'victoryPoint' | 'roadBuilding' | 'yearOfPlenty' | 'monopoly';
 
 export interface Hex {
   q: number;
@@ -20,8 +20,11 @@ export interface Player {
   color: PlayerColor;
   resources: Record<ResourceType, number>;
   longestRoadLength: number;
+  largestArmy: boolean
+  knightsPlayed: number
+  devCards: { playable: DevelopmentCardType[]; boughtThisTurn: DevelopmentCardType[]; played: DevelopmentCardType[]; }
   victoryPoints: number;
-  harbours?: Harbour[]; // Added harbours owned by the player
+  harbours?: Harbour[];
 }
 
 export interface GameState {
@@ -37,6 +40,8 @@ export interface GameState {
   harbours: Harbour[];
   roads: Record<string, Road>;
   longestRoad: { playerId: number | null; length: number };
+  devCardDeck: DevelopmentCardType[];
+  hasPlayedDevCardThisTurn: boolean;
   isGameOver: boolean;
   winnerId: number | null;
   phase: GamePhase;
@@ -89,4 +94,6 @@ export type GameAction =
   | { type: 'PROPOSE_TRADE'; payload: { offer: TradeOffer } }
   | { type: 'ACCEPT_TRADE'; payload: { acceptorId: number } }
   | { type: 'CANCEL_TRADE' }
+  | { type: 'BUY_DEV_CARD'; payload: { playerId: number}}
+  | { type: 'PLAY_DEV_CARD'; payload: { playerId: number, cardType: DevelopmentCardType}}
   | { type: 'END_TURN' };

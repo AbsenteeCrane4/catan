@@ -1,11 +1,12 @@
 import { GameState, GameAction, GameNode, ResourceType } from "@/types/catan";
-import { generateBoard, generateHarbours, getNodesForBoard } from "@/lib/hex-utils";
+import { createDevCardDeck, generateBoard, generateHarbours, getNodesForBoard } from "@/lib/hex-utils";
 import { PLAYER_COLORS } from "@/lib/constants";
 
 export const createInitialState = (radius = 2): GameState => {
   const hexes = generateBoard(radius);
   const nodes = getNodesForBoard(hexes);
   const harbours = generateHarbours(nodes);
+  const devCardDeck = createDevCardDeck()
   return {
     boardRadius: radius,
     hexes: hexes,
@@ -14,6 +15,8 @@ export const createInitialState = (radius = 2): GameState => {
     settlements: {},
     roads: {},
     longestRoad: { playerId: null, length: 4 }, // Start with 4 so players can beat it with a 5-road longest road
+    devCardDeck: devCardDeck,
+    hasPlayedDevCardThisTurn: false,
     harbours: harbours,
     currentTradeOffer: null,
     players: Array.from({ length: 4 }).map((_, i) => ({
@@ -21,6 +24,9 @@ export const createInitialState = (radius = 2): GameState => {
       color: PLAYER_COLORS[i % PLAYER_COLORS.length],
       resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }, // Start at 0!
       longestRoadLength: 0,
+      largestArmy: false,
+      knightsPlayed: 0,
+      devCards: {playable: [], boughtThisTurn: [], played: []},
       victoryPoints: 0,
       harbours: [] // Initialize empty harbours for each player
     })),
@@ -534,6 +540,106 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
 
     case 'CANCEL_TRADE': {
       return { ...state, currentTradeOffer: null, gameLog: ["Trade offer cancelled.", ...state.gameLog] };
+    }
+
+    case 'BUY_DEV_CARD': {
+      const { playerId } = action.payload;
+      
+      if (state.phase !== 'main') return state;
+      if (playerId !== state.currentPlayerIndex) return { ...state, gameLog: ["It's not your turn!", ...state.gameLog] };
+      if (!state.devCardDeck || state.devCardDeck.length === 0) {
+        return { ...state, gameLog: ["The Development Card deck is empty!", ...state.gameLog] };
+      }
+
+      const player = state.players[playerId];
+      
+      // Cost: 1 Sheep, 1 Wheat, 1 Ore
+      if (player.resources.sheep < 1 || player.resources.wheat < 1 || player.resources.ore < 1) {
+        return { ...state, gameLog: ["Not enough resources to buy a Development Card.", ...state.gameLog] };
+      }
+
+      const newDeck = [...state.devCardDeck];
+      const drawnCard = newDeck.pop()!;
+
+      const updatedPlayers = [...state.players];
+      updatedPlayers[playerId] = {
+        ...player,
+        resources: {
+          ...player.resources,
+          sheep: player.resources.sheep - 1,
+          wheat: player.resources.wheat - 1,
+          ore: player.resources.ore - 1,
+        },
+        devCards: {
+          ...player.devCards,
+          boughtThisTurn: [...player.devCards.boughtThisTurn, drawnCard]
+        },
+        // VP cards immediately add to the score
+        victoryPoints: drawnCard === 'victoryPoint' ? player.victoryPoints + 1 : player.victoryPoints
+      };
+
+      return {
+        ...state,
+        devCardDeck: newDeck,
+        players: updatedPlayers,
+        gameLog: [`Player ${playerId + 1} bought a Development Card.`, ...state.gameLog]
+      };
+    }
+
+    case 'PLAY_DEV_CARD': {
+      const { playerId, cardType } = action.payload; 
+      
+      if (state.phase !== 'main') return state;
+      if (playerId !== state.currentPlayerIndex) return { ...state, gameLog: ["It's not your turn!", ...state.gameLog] };
+      if (state.hasPlayedDevCardThisTurn) {
+        return { ...state, gameLog: ["You can only play one Development Card per turn!", ...state.gameLog] };
+      }
+
+      const player = state.players[playerId];
+      const cardIndex = player.devCards.playable.indexOf(cardType);
+
+      if (cardIndex === -1) {
+         return { ...state, gameLog: ["You don't have that card available to play right now.", ...state.gameLog] };
+      }
+
+      const updatedPlayers = [...state.players];
+      const updatedDevCards = { ...player.devCards };
+      
+      // Remove from playable, add to played
+      updatedDevCards.playable.splice(cardIndex, 1);
+      updatedDevCards.played.push(cardType);
+      
+      updatedPlayers[playerId] = {
+        ...player,
+        devCards: updatedDevCards,
+        knightsPlayed: cardType === 'knight' ? (player.knightsPlayed || 0) + 1 : player.knightsPlayed
+      };
+
+      let draftState = { 
+        ...state, 
+        players: updatedPlayers, 
+        hasPlayedDevCardThisTurn: true 
+      };
+
+      // --- SPECIFIC CARD LOGIC GOES HERE ---
+      if (cardType === 'yearOfPlenty') {
+         // Logic to add 2 chosen resources using cardArgs
+         draftState.gameLog = [`Player ${playerId + 1} played Year of Plenty.`, ...draftState.gameLog];
+      } else if (cardType === 'monopoly') {
+         // Logic to steal all of one resource type using cardArgs
+         draftState.gameLog = [`Player ${playerId + 1} played Monopoly.`, ...draftState.gameLog];
+      } else if (cardType === 'roadBuilding') {
+         // Logic to allow 2 free roads
+         draftState.gameLog = [`Player ${playerId + 1} played Road Building.`, ...draftState.gameLog];
+      } else if (cardType === 'knight') {
+         // Set phase/flag to force the player to move the robber
+         draftState.gameLog = [`Player ${playerId + 1} played a Knight. Must move the Robber!`, ...draftState.gameLog];
+      }
+
+      // Check for Largest Army if a knight was played
+      // draftState = evaluateLargestArmy(draftState);
+
+      return draftState;
     }
 
     default: return state;

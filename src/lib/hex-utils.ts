@@ -1,4 +1,4 @@
-import { Hex, GameNode, HexResource, Harbour, PortResource } from "@/types/catan";
+import { Hex, GameNode, HexResource, Harbour, PortResource, DevelopmentCardType } from "@/types/catan";
 import { HEX_SIZE, BASE_GAME_RESOURCES, BASE_GAME_TOKENS, BASE_PORTS } from "@/lib/constants";
 
 export function hexToPixel(q: number, r: number) {
@@ -192,4 +192,18 @@ export function getNodesForBoard(hexes: Hex[]): GameNode[] {
   });
 
   return nodes;
+}
+
+export function createDevCardDeck(): DevelopmentCardType[] {
+  let deck: DevelopmentCardType[] = [
+    ...Array(14).fill('knight'),
+    ...Array(5).fill('victoryPoint'),
+    ...Array(2).fill('roadBuilding'),
+    ...Array(2).fill('yearOfPlenty'),
+    ...Array(2).fill('monopoly'),
+  ]
+
+  shuffle(deck)
+
+  return deck
 }
