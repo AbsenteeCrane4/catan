@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ResourceType, TradeOffer, Player } from '@/types/catan';
+import { BookUp } from 'lucide-react';
 
 const RESOURCES: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
 
@@ -14,6 +15,7 @@ interface TradeUIProps {
   onProposeTrade: (offer: TradeOffer) => void;
   onAcceptTrade: () => void;
   onCancelTrade: () => void;
+  onBuyDevCard: () => void;
 }
 
 // Helper to determine the best ratio based on owned harbors
@@ -32,7 +34,8 @@ export function TradeUI({
   onTradeWithBank,
   onProposeTrade,
   onAcceptTrade,
-  onCancelTrade
+  onCancelTrade,
+  onBuyDevCard
 }: TradeUIProps) {
   const isMyTurn = localPlayerId === currentPlayerIndex;
 
@@ -83,6 +86,9 @@ export function TradeUI({
 
   const validReqRes = Object.keys(requestMap).find(k => requestMap[k as ResourceType] > 0) as ResourceType;
   const canTradeWithBank = validOfferRes && validReqRes;
+
+  // Check if player can afford a Dev Card (1 Sheep, 1 Wheat, 1 Ore)
+  const canAffordDevCard = localPlayer.resources.sheep >= 1 && localPlayer.resources.wheat >= 1 && localPlayer.resources.ore >= 1;
 
   // --- VIEW 1: Someone else has proposed a trade ---
   if (currentTradeOffer) {
@@ -198,6 +204,16 @@ export function TradeUI({
             Bank Trade ({bestRatio}:1)
           </button>
         )}
+
+        <div className="h-[1px] bg-slate-700 w-full my-1" />
+        <button 
+          onClick={onBuyDevCard}
+          disabled={!canAffordDevCard}
+          className="w-full bg-purple-600/20 hover:bg-purple-600/40 disabled:opacity-30 disabled:hover:bg-purple-600/20 text-purple-300 py-2 rounded text-[10px] font-bold border border-purple-500/50 transition-all flex items-center justify-center gap-2"
+        >
+          <BookUp size={14} /> 
+          Buy Dev Card (1🐑, 1🌾, 1🪨)
+        </button>
       </div>
     </div>
   );
