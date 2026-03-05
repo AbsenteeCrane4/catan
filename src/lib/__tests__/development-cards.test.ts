@@ -162,4 +162,26 @@ describe('Development Cards', () => {
       expect(newState.gameLog[0]).toContain("You can only play one Development Card per turn!");
     });
   });
+
+  describe('Turn Transitions (END_TURN)', () => {
+    it('should make cards bought this turn playable on the next turn and reset the play limit', () => {
+      initialState.players[0].devCards.playable = ['yearOfPlenty'];
+      initialState.players[0].devCards.boughtThisTurn = ['knight'];
+      initialState.hasPlayedDevCardThisTurn = true;
+
+      const newState = catanReducer(initialState, { type: 'END_TURN' });
+
+      // Bought cards should migrate to playable
+      expect(newState.players[0].devCards.boughtThisTurn).toHaveLength(0);
+      expect(newState.players[0].devCards.playable).toHaveLength(2);
+      expect(newState.players[0].devCards.playable).toContain('knight');
+      expect(newState.players[0].devCards.playable).toContain('yearOfPlenty');
+
+      // Card limit should reset
+      expect(newState.hasPlayedDevCardThisTurn).toBe(false);
+      
+      // Turn should pass
+      expect(newState.currentPlayerIndex).toBe(1);
+    });
+  });
 });

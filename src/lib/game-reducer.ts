@@ -264,8 +264,31 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       if (state.phase !== 'main') {
         return { ...state, gameLog: ["Cannot end turn manually during setup!", ...state.gameLog] };
       }
+
+      const updatedPlayers = state.players.map((p, idx) => {
+        if (idx === state.currentPlayerIndex) {
+          return {
+            ...p,
+            devCards: {
+              ...p.devCards,
+              playable: [...p.devCards.playable, ...p.devCards.boughtThisTurn],
+              boughtThisTurn: [],
+            }
+          };
+        }
+        return p;
+      });
+
       const nextPlayer = (state.currentPlayerIndex + 1) % state.players.length;
-      return { ...state, currentPlayerIndex: nextPlayer, diceRoll: null, gameLog: [`--- Player ${nextPlayer + 1}'s Turn ---`, ...state.gameLog] };
+
+      return { 
+        ...state, 
+        players: updatedPlayers,
+        currentPlayerIndex: nextPlayer, 
+        diceRoll: null, 
+        hasPlayedDevCardThisTurn: false,
+        gameLog: [`--- Player ${nextPlayer + 1}'s Turn ---`, ...state.gameLog] 
+      };
     }
 
     case 'BUILD_SETTLEMENT': {
