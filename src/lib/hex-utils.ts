@@ -203,7 +203,7 @@ export function createDevCardDeck(): DevelopmentCardType[] {
     ...Array(2).fill('monopoly'),
   ]
 
-  shuffle(deck)
+  deck = shuffle(deck)
 
   return deck
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { catanReducer, createInitialState } from '../game-reducer';
+import { catanReducer, createInitialState } from '@/lib/game-reducer';
 import { GameState } from '@/types/catan';
+import { createDevCardDeck } from '@/lib/hex-utils';
 
 describe('Development Cards', () => {
   let initialState: GameState;
@@ -184,4 +185,50 @@ describe('Development Cards', () => {
       expect(newState.currentPlayerIndex).toBe(1);
     });
   });
+
+describe('Development Card Deck Generation', () => {
+  it('should always contain exactly 25 cards with the correct distribution', () => {
+    const deck = createDevCardDeck();
+
+    // Total count check
+    expect(deck).toHaveLength(25);
+
+    // Distribution check
+    const counts = deck.reduce((acc, card) => {
+      acc[card] = (acc[card] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    expect(counts['knight']).toBe(14);
+    expect(counts['victoryPoint']).toBe(5);
+    expect(counts['roadBuilding']).toBe(2);
+    expect(counts['yearOfPlenty']).toBe(2);
+    expect(counts['monopoly']).toBe(2);
+  });
+
+  it('should produce different card orders across multiple shuffles', () => {
+    const deckA = createDevCardDeck();
+    const deckB = createDevCardDeck();
+    const deckC = createDevCardDeck();
+
+    // While it is mathematically possible for two shuffles to be identical,
+    // with 25 cards the odds are 1 in 25! (septillion). 
+    // Comparing strings is an easy way to check deep equality of order.
+    const stringA = JSON.stringify(deckA);
+    const stringB = JSON.stringify(deckB);
+    const stringC = JSON.stringify(deckC);
+
+    expect(stringA).not.toBe(stringB);
+    expect(stringB).not.toBe(stringC);
+    expect(stringA).not.toBe(stringC);
+  });
+
+  it('should not lose any cards after generating 100 test decks', () => {
+    for (let i = 0; i < 100; i++) {
+      const deck = createDevCardDeck();
+      expect(deck.length).toBe(25);
+      expect(deck.filter(c => c === 'knight').length).toBe(14);
+    }
+  });
+});
 });
