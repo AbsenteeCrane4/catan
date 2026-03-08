@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ResourceType, DevelopmentCardType } from '@/types/catan';
+import { ResourceType, DevelopmentCardType, AnyCardArgs } from '@/types/catan';
 import { RESOURCE_COLORS } from '@/lib/constants';
 import { Layers, X } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -7,7 +7,7 @@ import { clsx } from 'clsx';
 interface DevCardModalProps {
   cardType: DevelopmentCardType;
   onClose: () => void;
-  onSubmit: (cardArgs: any) => void;
+  onSubmit: (cardArgs: AnyCardArgs) => void;
 }
 
 const formatCardName = (type: DevelopmentCardType) => {
