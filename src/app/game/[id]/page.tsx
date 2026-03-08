@@ -46,7 +46,7 @@ export default function CatanPage({ params }: PageProps) {
         onRoll={() => performAction({ type: 'ROLL_DICE' })}
         onEndTurn={() => performAction({ type: 'END_TURN' })}
         hasPlayedDevCardThisTurn={state.hasPlayedDevCardThisTurn}
-        onPlayDevCard={(cardType) => performAction({ type: 'PLAY_DEV_CARD', payload: { playerId: myPlayerIndex, cardType: cardType}})}
+        onPlayDevCard={(cardType, cardArgs) => performAction({ type: 'PLAY_DEV_CARD', payload: { playerId: myPlayerIndex, cardType: cardType, cardArgs: cardArgs}})}
       />
 
       {/* Center: The Map */}

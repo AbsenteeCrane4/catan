@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Player, ResourceType, DevelopmentCardType } from "@/types/catan";
 import { RESOURCE_COLORS } from "@/lib/constants";
 import { Users, Dice5, ChevronRight, Layers, Lock, Play } from "lucide-react";
 import { clsx } from "clsx";
 import { DiceRoll } from "./DiceRoll"; // Import your animation component
 import { Road } from "./Road"; // Import the Road icon component
+import { DevCardModal } from "./DevCardModal";
 
 interface Props {
   players: Player[];
@@ -14,7 +16,7 @@ interface Props {
   hasPlayedDevCardThisTurn: boolean;
   onRoll: () => void;
   onEndTurn: () => void;
-  onPlayDevCard: (cardType: DevelopmentCardType) => void;
+  onPlayDevCard: (cardType: DevelopmentCardType, cardArgs?: any) => void;
 }
 
 const playerColors = {
@@ -48,7 +50,26 @@ export function PlayerSidebar({
 }: Props) {
   const isMyTurn = currentPlayerIndex === myPlayerIndex;
 
+  // Track which card is waiting for user input
+  const [activeCardPrompt, setActiveCardPrompt] = useState<DevelopmentCardType | null>(null);
+
+  const handleInitiatePlay = (card: DevelopmentCardType) => {
+    if (card === 'monopoly' || card === 'yearOfPlenty') {
+      setActiveCardPrompt(card);
+    } else {
+      onPlayDevCard(card);
+    }
+  };
+
+  const handleModalSubmit = (cardArgs: any) => {
+    if (activeCardPrompt) {
+      onPlayDevCard(activeCardPrompt, cardArgs);
+      setActiveCardPrompt(null);
+    }
+  };
+
   return (
+  <>
     <aside className="w-72 bg-slate-800/90 backdrop-blur border-r border-slate-700 p-4 flex flex-col gap-4 overflow-y-auto">
       
       {/* --- TURN CONTROLS SECTION --- */}
@@ -148,7 +169,7 @@ export function PlayerSidebar({
                       <span className="text-[10px] text-purple-300 font-bold">{formatCardName(card)}</span>
                       {card !== 'victoryPoint' && (
                         <button
-                          onClick={() => onPlayDevCard(card)}
+                          onClick={() => handleInitiatePlay(card)}
                           disabled={!isMyTurn || hasPlayedDevCardThisTurn}
                           className="bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1 transition-all"
                         >
@@ -180,6 +201,15 @@ export function PlayerSidebar({
           </div>
         )}
       </div>
-    </aside>
+    </aside> 
+    
+    {activeCardPrompt && (
+      <DevCardModal 
+        cardType={activeCardPrompt} 
+        onClose={() => setActiveCardPrompt(null)} 
+        onSubmit={handleModalSubmit}
+      />
+    )}
+  </>
   );
 }
