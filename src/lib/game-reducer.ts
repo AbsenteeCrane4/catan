@@ -1,4 +1,4 @@
-import { GameState, GameAction, GameNode, ResourceType } from "@/types/catan";
+import { GameState, GameAction, GameNode, ResourceType, CardArgsMap } from "@/types/catan";
 import { createDevCardDeck, generateBoard, generateHarbours, getNodesForBoard } from "@/lib/hex-utils";
 import { PLAYER_COLORS } from "@/lib/constants";
 
@@ -610,7 +610,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'PLAY_DEV_CARD': {
-      const { playerId, cardType } = action.payload; 
+      const { playerId, cardType, cardArgs } = action.payload; 
       
       if (state.phase !== 'main') return state;
       if (playerId !== state.currentPlayerIndex) return { ...state, gameLog: ["It's not your turn!", ...state.gameLog] };
@@ -626,9 +626,12 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       }
 
       const updatedPlayers = [...state.players];
-      const updatedDevCards = { ...player.devCards };
+      const updatedDevCards = { 
+        ...player.devCards,
+        playable: [...player.devCards.playable],
+        played: [...player.devCards.played]
+      };
       
-      // Remove from playable, add to played
       updatedDevCards.playable.splice(cardIndex, 1);
       updatedDevCards.played.push(cardType);
       
@@ -644,13 +647,36 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         hasPlayedDevCardThisTurn: true 
       };
 
-      // --- SPECIFIC CARD LOGIC GOES HERE ---
       if (cardType === 'yearOfPlenty') {
-         // Logic to add 2 chosen resources using cardArgs
-         draftState.gameLog = [`Player ${playerId + 1} played Year of Plenty.`, ...draftState.gameLog];
-      } else if (cardType === 'monopoly') {
-         // Logic to steal all of one resource type using cardArgs
-         draftState.gameLog = [`Player ${playerId + 1} played Monopoly.`, ...draftState.gameLog];
+        const args = cardArgs as CardArgsMap['yearOfPlenty']
+          if (!args?.resource1 || !args?.resource2) return state; // Fail safely if UI didn't send args
+
+          draftState.players[playerId].resources[args.resource1] += 1;
+          draftState.players[playerId].resources[args.resource2] += 1;
+          draftState.gameLog = [`Player ${playerId + 1} played Year of Plenty and took ${args.resource1} and ${args.resource2}.`, ...draftState.gameLog];
+      } 
+      
+      else if (cardType === 'monopoly') {
+          const args = cardArgs as CardArgsMap['monopoly']
+          if (!args?.monopolyResource) return state;
+          
+          let stolenAmount = 0;
+          // Loop through all other players and take that resource
+          draftState.players = draftState.players.map(p => {
+              if (p.id === playerId) return p; // Skip the player who played the card
+              
+              const amountPlayerHas = p.resources[args.monopolyResource!];
+              stolenAmount += amountPlayerHas;
+              
+              return {
+                  ...p,
+                  resources: { ...p.resources, [args.monopolyResource!]: 0 }
+              };
+          });
+
+          // Give all stolen resources to the card player
+          draftState.players[playerId].resources[args.monopolyResource] += stolenAmount;
+          draftState.gameLog = [`Player ${playerId + 1} played Monopoly and stole ${stolenAmount} ${args.monopolyResource}!`, ...draftState.gameLog];
       } else if (cardType === 'roadBuilding') {
          // Logic to allow 2 free roads
          draftState.gameLog = [`Player ${playerId + 1} played Road Building.`, ...draftState.gameLog];

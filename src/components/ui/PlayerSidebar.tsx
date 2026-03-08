@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Player, ResourceType, DevelopmentCardType } from "@/types/catan";
+import { Player, ResourceType, DevelopmentCardType, AnyCardArgs } from "@/types/catan";
 import { RESOURCE_COLORS } from "@/lib/constants";
 import { Users, Dice5, ChevronRight, Layers, Lock, Play } from "lucide-react";
 import { clsx } from "clsx";
@@ -16,7 +16,7 @@ interface Props {
   hasPlayedDevCardThisTurn: boolean;
   onRoll: () => void;
   onEndTurn: () => void;
-  onPlayDevCard: (cardType: DevelopmentCardType, cardArgs?: any) => void;
+  onPlayDevCard: (cardType: DevelopmentCardType, cardArgs?: AnyCardArgs) => void;
 }
 
 const playerColors = {
@@ -61,7 +61,7 @@ export function PlayerSidebar({
     }
   };
 
-  const handleModalSubmit = (cardArgs: any) => {
+  const handleModalSubmit = (cardArgs: AnyCardArgs) => {
     if (activeCardPrompt) {
       onPlayDevCard(activeCardPrompt, cardArgs);
       setActiveCardPrompt(null);

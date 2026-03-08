@@ -5,6 +5,11 @@ export type PlayerColor = 'red' | 'blue' | 'brown' | 'orange' | 'green' | 'white
 export type GamePhase = 'setup1' | 'setup2' | 'main';
 export type SetupAction = 'settlement' | 'road' | 'none';
 export type DevelopmentCardType = 'knight' | 'victoryPoint' | 'roadBuilding' | 'yearOfPlenty' | 'monopoly';
+export type YearOfPlentyArgs = { resource1: ResourceType; resource2: ResourceType };
+export type MonopolyArgs = { monopolyResource: ResourceType };
+export type KnightArgs = { robberHexId: string; robberTargetPlayerId?: number | null };
+export type RoadBuildingArgs = { road1: Road[]; road2: Road[] };
+export type AnyCardArgs = YearOfPlentyArgs | MonopolyArgs | KnightArgs | RoadBuildingArgs;
 
 export interface Hex {
   q: number;
@@ -83,6 +88,14 @@ export interface Harbour {
   angle: number;
 }
 
+export type CardArgsMap = {
+  yearOfPlenty: YearOfPlentyArgs;
+  monopoly: MonopolyArgs;
+  knight: KnightArgs;
+  roadBuilding: RoadBuildingArgs;
+  victoryPoint: undefined;
+};
+
 export type GameAction = 
   | { type: 'SYNC_STATE'; payload: GameState }
   | { type: 'BUILD_SETTLEMENT'; payload: { nodeId: string; playerId: number } }
@@ -95,5 +108,5 @@ export type GameAction =
   | { type: 'ACCEPT_TRADE'; payload: { acceptorId: number } }
   | { type: 'CANCEL_TRADE' }
   | { type: 'BUY_DEV_CARD'; payload: { playerId: number}}
-  | { type: 'PLAY_DEV_CARD'; payload: { playerId: number, cardType: DevelopmentCardType}}
+  | { type: 'PLAY_DEV_CARD'; payload: { playerId: number, cardType: DevelopmentCardType, cardArgs?: any}}
   | { type: 'END_TURN' };
