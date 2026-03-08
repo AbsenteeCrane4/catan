@@ -1,6 +1,6 @@
 import { Hex } from "@/types/catan";
 import { hexToPixel } from "@/lib/hex-utils";
-import { RESOURCE_COLORS, HEX_SIZE } from "@/lib/constants";
+import { HEX_RESOURCE_COLORS, HEX_SIZE } from "@/lib/constants";
 import { clsx } from "clsx";
 
 export function HexTile({ hex }: { hex: Hex }) {
@@ -18,7 +18,7 @@ export function HexTile({ hex }: { hex: Hex }) {
     <g transform={`translate(${x}, ${y})`} className="group">
       <polygon
         points={points.join(" ")}
-        fill={RESOURCE_COLORS[hex.resource]}
+        fill={HEX_RESOURCE_COLORS[hex.resource]}
         stroke="#f8fafc"
         strokeWidth="2"
         className="transition-opacity hover:opacity-90 cursor-pointer"
