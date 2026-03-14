@@ -122,6 +122,17 @@ function getLongestRoadForPlayer(playerId: number, roads: any[], settlements: Re
   return maxPath;
 }
 
+function isValidRoadPlacement(nodeId1: string, nodeId2: string, playerId: number, state: GameState): boolean {
+  const roadId = [nodeId1, nodeId2].sort().join('-');
+  
+  if (state.roads[roadId]) return false;
+
+  return (state.settlements[nodeId1]?.playerId === playerId) || 
+         (state.settlements[nodeId2]?.playerId === playerId) ||
+         isNodeConnectedToPlayerRoad(nodeId1, state.roads, playerId) || 
+         isNodeConnectedToPlayerRoad(nodeId2, state.roads, playerId);
+}
+
 export function evaluateLongestRoad(state: GameState, affectedPlayerIds: number[]) {
   const { roads, settlements, players, longestRoad } = state;
   
@@ -390,12 +401,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       const roadId = [nodeId1, nodeId2].sort().join('-');
       if (state.roads[roadId]) return state;
 
-      const touchesPiece = (state.settlements[nodeId1]?.playerId === playerId) || 
-                           (state.settlements[nodeId2]?.playerId === playerId) ||
-                           isNodeConnectedToPlayerRoad(nodeId1, state.roads, playerId) || 
-                           isNodeConnectedToPlayerRoad(nodeId2, state.roads, playerId);
-
-      if (!touchesPiece) return { ...state, gameLog: ["Road must connect!", ...state.gameLog] };
+      if (!isValidRoadPlacement(nodeId1, nodeId2, playerId, state)) return { ...state, gameLog: ["Road must connect!", ...state.gameLog] };
 
       const isInitial = state.phase !== 'main';
       const player = state.players[playerId];
@@ -641,7 +647,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         knightsPlayed: cardType === 'knight' ? (player.knightsPlayed || 0) + 1 : player.knightsPlayed
       };
 
-      let draftState = { 
+      const draftState = { 
         ...state, 
         players: updatedPlayers, 
         hasPlayedDevCardThisTurn: true 
@@ -678,8 +684,33 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
           draftState.players[playerId].resources[args.monopolyResource] += stolenAmount;
           draftState.gameLog = [`Player ${playerId + 1} played Monopoly and stole ${stolenAmount} ${args.monopolyResource}!`, ...draftState.gameLog];
       } else if (cardType === 'roadBuilding') {
-         // Logic to allow 2 free roads
-         draftState.gameLog = [`Player ${playerId + 1} played Road Building.`, ...draftState.gameLog];
+        const args = cardArgs as CardArgsMap['roadBuilding'];
+          if (!args?.road1 || !args?.road2) return state;
+
+          // Validate and place the FIRST road
+          if (!isValidRoadPlacement(args.road1[0], args.road1[1], playerId, draftState)) {
+              return { ...state, gameLog: ["Invalid first road placement for Road Building.", ...state.gameLog] };
+          }
+          const road1Id = [...args.road1].sort().join('-');
+          draftState.roads[road1Id] = { id: road1Id, playerId, nodes: args.road1 };
+
+          // Validate and place the SECOND road (against the draftState that now includes road 1)
+          if (!isValidRoadPlacement(args.road2[0], args.road2[1], playerId, draftState)) {
+              return { ...state, gameLog: ["Invalid second road placement for Road Building.", ...state.gameLog] };
+          }
+          const road2Id = [...args.road2].sort().join('-');
+          draftState.roads[road2Id] = { id: road2Id, playerId, nodes: args.road2 };
+
+          // Evaluate longest road after both are placed
+          const evaluation = evaluateLongestRoad(draftState, [playerId]);
+          draftState.players = evaluation.players;
+          draftState.longestRoad = evaluation.longestRoad;
+          
+          draftState.gameLog = [
+              `Player ${playerId + 1} played Road Building and placed 2 free roads.`,
+              ...evaluation.logs,
+              ...draftState.gameLog
+          ];
       } else if (cardType === 'knight') {
          // Set phase/flag to force the player to move the robber
          draftState.gameLog = [`Player ${playerId + 1} played a Knight. Must move the Robber!`, ...draftState.gameLog];
