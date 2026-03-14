@@ -2,6 +2,7 @@ services:
   catan-app:
     image: ghcr.io/absenteecrane4/catan:latest
     container_name: catan_production
+    pull_policy: always
     restart: unless-stopped
     ports:
       - "3000:3000"
