@@ -10,6 +10,7 @@ import { HarbourLayer } from './HarbourLayer';
 
 interface GameBoardProps {
   state: GameState; // Accept the whole state object
+  pendingRoads?: [string, string][];
   onBuildSettlement: (nodeId: string) => void;
   onBuildRoad: (nodeId1: string, nodeId2: string) => void;
   onUpgradeSettlement: (nodeId: string) => void;
@@ -17,6 +18,7 @@ interface GameBoardProps {
 
 export function GameBoard({ 
   state: { hexes, nodes, settlements, roads, harbours, boardRadius: radius, robberHexId },
+  pendingRoads = [],
   onBuildSettlement,
   onBuildRoad, 
   onUpgradeSettlement 
@@ -54,7 +56,7 @@ export function GameBoard({
 
         {robberPos && <Robber x={robberPos.x} y={robberPos.y} />}
         
-        <RoadLayer nodes={nodes} roads={roads} onBuildRoad={onBuildRoad} />
+        <RoadLayer nodes={nodes} roads={roads} pendingRoads={pendingRoads} onBuildRoad={onBuildRoad} />
         
         <g id="node-layer">
           {nodes.map(node => (

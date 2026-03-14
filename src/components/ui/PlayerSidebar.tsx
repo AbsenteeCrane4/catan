@@ -17,6 +17,7 @@ interface Props {
   onRoll: () => void;
   onEndTurn: () => void;
   onPlayDevCard: (cardType: DevelopmentCardType, cardArgs?: AnyCardArgs) => void;
+  onInitiateMapCard: (cardType: 'knight' | 'roadBuilding') => void;
 }
 
 const playerColors = {
@@ -46,7 +47,8 @@ export function PlayerSidebar({
   hasPlayedDevCardThisTurn,
   onRoll, 
   onEndTurn,
-  onPlayDevCard
+  onPlayDevCard,
+  onInitiateMapCard
 }: Props) {
   const isMyTurn = currentPlayerIndex === myPlayerIndex;
 
@@ -56,6 +58,8 @@ export function PlayerSidebar({
   const handleInitiatePlay = (card: DevelopmentCardType) => {
     if (card === 'monopoly' || card === 'yearOfPlenty') {
       setActiveCardPrompt(card);
+    } else if (card === 'roadBuilding' || card === 'knight') {
+      onInitiateMapCard(card);
     } else {
       onPlayDevCard(card);
     }

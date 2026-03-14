@@ -13,10 +13,39 @@ interface PageProps {
 export default function CatanPage({ params }: PageProps) {
   const { id: gameId } = use(params);
   const [myPlayerIndex, setMyPlayerIndex] = useState<number | null>(null);
+  const [activeMapAction, setActiveMapAction] = useState<'none' | 'roadBuilding' | 'knight'>('none');
+  const [pendingRoadBuildingRoads, setPendingRoadBuildingRoads] = useState<[string, string][]>([]);
   
   const { state, performAction } = useMultiplayerGame(gameId, myPlayerIndex);
 
-  // 1. Initial Selection Screen
+  // Intercept road building clicks before they hit performAction
+  const handleEdgeClick = (n1: string, n2: string) => {
+    if (activeMapAction === 'none') {
+      // Standard phase build
+      performAction({ type: 'BUILD_ROAD', payload: { nodeId1: n1, nodeId2: n2, playerId: myPlayerIndex }});
+    } else if (activeMapAction === 'roadBuilding') {
+      // Dev Card build logic
+      const newRoad: [string, string] = [n1, n2];
+      const updatedPending = [...pendingRoadBuildingRoads, newRoad];
+
+      if (updatedPending.length === 1) {
+        setPendingRoadBuildingRoads(updatedPending);
+      } else if (updatedPending.length === 2) {
+        performAction({
+          type: 'PLAY_DEV_CARD',
+          payload: {
+            playerId: myPlayerIndex,
+            cardType: 'roadBuilding',
+            cardArgs: { road1: updatedPending[0], road2: updatedPending[1] }
+          }
+        });
+        // Reset state after dispatch
+        setActiveMapAction('none');
+        setPendingRoadBuildingRoads([]);
+      }
+    }
+  };
+
   if (myPlayerIndex === null) {
     return (
       <div className="h-screen bg-slate-900 flex flex-col items-center justify-center gap-8">
@@ -47,10 +76,23 @@ export default function CatanPage({ params }: PageProps) {
         onEndTurn={() => performAction({ type: 'END_TURN' })}
         hasPlayedDevCardThisTurn={state.hasPlayedDevCardThisTurn}
         onPlayDevCard={(cardType, cardArgs) => performAction({ type: 'PLAY_DEV_CARD', payload: { playerId: myPlayerIndex, cardType: cardType, cardArgs: cardArgs}})}
+        onInitiateMapCard={(cardType) => {
+          setActiveMapAction(cardType);
+          if (cardType === 'roadBuilding') setPendingRoadBuildingRoads([]);
+        }}
       />
 
       {/* Center: The Map */}
       <main className="flex-1 relative flex items-center justify-center overflow-hidden">
+        {/* Dynamic Map Prompts */}
+        {activeMapAction === 'roadBuilding' && (
+          <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-full font-bold shadow-xl shadow-blue-900/50 animate-pulse z-20 border border-blue-400">
+            {pendingRoadBuildingRoads.length === 0 
+              ? "Select an edge for your 1st free road" 
+              : "Select an edge for your 2nd free road"}
+          </div>
+        )}
+
         <div className="absolute top-4 left-4 z-10 bg-slate-800/80 p-3 rounded-xl border border-white/10 backdrop-blur-md flex items-center gap-3">
            <span className="text-[10px] font-bold text-slate-400 uppercase">Map Zoom</span>
            <input
@@ -63,8 +105,9 @@ export default function CatanPage({ params }: PageProps) {
 
         <GameBoard 
           state={state} 
+          pendingRoads={pendingRoadBuildingRoads}
           onBuildSettlement={(nodeId) => performAction({ type: 'BUILD_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex }})}
-          onBuildRoad={(n1, n2) => performAction({ type: 'BUILD_ROAD', payload: { nodeId1: n1, nodeId2: n2, playerId: myPlayerIndex }})}
+          onBuildRoad={handleEdgeClick}
           onUpgradeSettlement={(nodeId) => performAction({ type: 'UPGRADE_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex }})}
         />
       </main>
@@ -78,21 +121,11 @@ export default function CatanPage({ params }: PageProps) {
             currentPlayerIndex={state.currentPlayerIndex}
             localPlayer={state.players[myPlayerIndex]}
             currentTradeOffer={state.currentTradeOffer}
-            onTradeWithBank={(offerResource, requestResource) => 
-              performAction({ type: 'TRADE_WITH_BANK', payload: { playerId: myPlayerIndex, offerResource, requestResource }})
-            }
-            onProposeTrade={(offer) => 
-              performAction({ type: 'PROPOSE_TRADE', payload: { offer }})
-            }
-            onAcceptTrade={() => 
-              performAction({ type: 'ACCEPT_TRADE', payload: { acceptorId: myPlayerIndex }})
-            }
-            onCancelTrade={() => 
-              performAction({ type: 'CANCEL_TRADE', payload: {} })
-            }
-            onBuyDevCard={() => 
-              performAction({ type: 'BUY_DEV_CARD', payload: { playerId: myPlayerIndex }})
-            }
+            onTradeWithBank={(offerResource, requestResource) => performAction({ type: 'TRADE_WITH_BANK', payload: { playerId: myPlayerIndex, offerResource, requestResource }})}
+            onProposeTrade={(offer) => performAction({ type: 'PROPOSE_TRADE', payload: { offer }})}
+            onAcceptTrade={() => performAction({ type: 'ACCEPT_TRADE', payload: { acceptorId: myPlayerIndex }})}
+            onCancelTrade={() => performAction({ type: 'CANCEL_TRADE', payload: {} })}
+            onBuyDevCard={() => performAction({ type: 'BUY_DEV_CARD', payload: { playerId: myPlayerIndex }})}
           />
         </div>
 
