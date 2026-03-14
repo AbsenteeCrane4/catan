@@ -108,5 +108,5 @@ export type GameAction =
   | { type: 'ACCEPT_TRADE'; payload: { acceptorId: number } }
   | { type: 'CANCEL_TRADE' }
   | { type: 'BUY_DEV_CARD'; payload: { playerId: number}}
-  | { type: 'PLAY_DEV_CARD'; payload: { playerId: number, cardType: DevelopmentCardType, cardArgs?: any}}
+  | { type: 'PLAY_DEV_CARD'; payload: { playerId: number, cardType: DevelopmentCardType, cardArgs?: AnyCardArgs}}
   | { type: 'END_TURN' };
