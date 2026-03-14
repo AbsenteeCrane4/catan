@@ -1,11 +1,12 @@
-import { GameState, GameAction, GameNode, ResourceType } from "@/types/catan";
-import { generateBoard, generateHarbours, getNodesForBoard } from "@/lib/hex-utils";
+import { GameState, GameAction, GameNode, ResourceType, CardArgsMap } from "@/types/catan";
+import { createDevCardDeck, generateBoard, generateHarbours, getNodesForBoard } from "@/lib/hex-utils";
 import { PLAYER_COLORS } from "@/lib/constants";
 
 export const createInitialState = (radius = 2): GameState => {
   const hexes = generateBoard(radius);
   const nodes = getNodesForBoard(hexes);
   const harbours = generateHarbours(nodes);
+  const devCardDeck = createDevCardDeck()
   return {
     boardRadius: radius,
     hexes: hexes,
@@ -14,6 +15,8 @@ export const createInitialState = (radius = 2): GameState => {
     settlements: {},
     roads: {},
     longestRoad: { playerId: null, length: 4 }, // Start with 4 so players can beat it with a 5-road longest road
+    devCardDeck: devCardDeck,
+    hasPlayedDevCardThisTurn: false,
     harbours: harbours,
     currentTradeOffer: null,
     players: Array.from({ length: 4 }).map((_, i) => ({
@@ -21,6 +24,9 @@ export const createInitialState = (radius = 2): GameState => {
       color: PLAYER_COLORS[i % PLAYER_COLORS.length],
       resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }, // Start at 0!
       longestRoadLength: 0,
+      largestArmy: false,
+      knightsPlayed: 0,
+      devCards: {playable: [], boughtThisTurn: [], played: []},
       victoryPoints: 0,
       harbours: [] // Initialize empty harbours for each player
     })),
@@ -114,6 +120,17 @@ function getLongestRoadForPlayer(playerId: number, roads: any[], settlements: Re
   }
 
   return maxPath;
+}
+
+function isValidRoadPlacement(nodeId1: string, nodeId2: string, playerId: number, state: GameState): boolean {
+  const roadId = [nodeId1, nodeId2].sort().join('-');
+  
+  if (state.roads[roadId]) return false;
+
+  return (state.settlements[nodeId1]?.playerId === playerId) || 
+         (state.settlements[nodeId2]?.playerId === playerId) ||
+         isNodeConnectedToPlayerRoad(nodeId1, state.roads, playerId) || 
+         isNodeConnectedToPlayerRoad(nodeId2, state.roads, playerId);
 }
 
 export function evaluateLongestRoad(state: GameState, affectedPlayerIds: number[]) {
@@ -258,8 +275,31 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       if (state.phase !== 'main') {
         return { ...state, gameLog: ["Cannot end turn manually during setup!", ...state.gameLog] };
       }
+
+      const updatedPlayers = state.players.map((p, idx) => {
+        if (idx === state.currentPlayerIndex) {
+          return {
+            ...p,
+            devCards: {
+              ...p.devCards,
+              playable: [...p.devCards.playable, ...p.devCards.boughtThisTurn],
+              boughtThisTurn: [],
+            }
+          };
+        }
+        return p;
+      });
+
       const nextPlayer = (state.currentPlayerIndex + 1) % state.players.length;
-      return { ...state, currentPlayerIndex: nextPlayer, diceRoll: null, gameLog: [`--- Player ${nextPlayer + 1}'s Turn ---`, ...state.gameLog] };
+
+      return { 
+        ...state, 
+        players: updatedPlayers,
+        currentPlayerIndex: nextPlayer, 
+        diceRoll: null, 
+        hasPlayedDevCardThisTurn: false,
+        gameLog: [`--- Player ${nextPlayer + 1}'s Turn ---`, ...state.gameLog] 
+      };
     }
 
     case 'BUILD_SETTLEMENT': {
@@ -361,12 +401,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       const roadId = [nodeId1, nodeId2].sort().join('-');
       if (state.roads[roadId]) return state;
 
-      const touchesPiece = (state.settlements[nodeId1]?.playerId === playerId) || 
-                           (state.settlements[nodeId2]?.playerId === playerId) ||
-                           isNodeConnectedToPlayerRoad(nodeId1, state.roads, playerId) || 
-                           isNodeConnectedToPlayerRoad(nodeId2, state.roads, playerId);
-
-      if (!touchesPiece) return { ...state, gameLog: ["Road must connect!", ...state.gameLog] };
+      if (!isValidRoadPlacement(nodeId1, nodeId2, playerId, state)) return { ...state, gameLog: ["Road must connect!", ...state.gameLog] };
 
       const isInitial = state.phase !== 'main';
       const player = state.players[playerId];
@@ -534,6 +569,157 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
 
     case 'CANCEL_TRADE': {
       return { ...state, currentTradeOffer: null, gameLog: ["Trade offer cancelled.", ...state.gameLog] };
+    }
+
+    case 'BUY_DEV_CARD': {
+      const { playerId } = action.payload;
+      
+      if (state.phase !== 'main') return state;
+      if (playerId !== state.currentPlayerIndex) return { ...state, gameLog: ["It's not your turn!", ...state.gameLog] };
+      if (!state.devCardDeck || state.devCardDeck.length === 0) {
+        return { ...state, gameLog: ["The Development Card deck is empty!", ...state.gameLog] };
+      }
+
+      const player = state.players[playerId];
+      
+      // Cost: 1 Sheep, 1 Wheat, 1 Ore
+      if (player.resources.sheep < 1 || player.resources.wheat < 1 || player.resources.ore < 1) {
+        return { ...state, gameLog: ["Not enough resources to buy a Development Card.", ...state.gameLog] };
+      }
+
+      const newDeck = [...state.devCardDeck];
+      const drawnCard = newDeck.pop()!;
+
+      const updatedPlayers = [...state.players];
+      updatedPlayers[playerId] = {
+        ...player,
+        resources: {
+          ...player.resources,
+          sheep: player.resources.sheep - 1,
+          wheat: player.resources.wheat - 1,
+          ore: player.resources.ore - 1,
+        },
+        devCards: {
+          ...player.devCards,
+          boughtThisTurn: [...player.devCards.boughtThisTurn, drawnCard]
+        },
+        // VP cards immediately add to the score
+        victoryPoints: drawnCard === 'victoryPoint' ? player.victoryPoints + 1 : player.victoryPoints
+      };
+
+      return {
+        ...state,
+        devCardDeck: newDeck,
+        players: updatedPlayers,
+        gameLog: [`Player ${playerId + 1} bought a Development Card.`, ...state.gameLog]
+      };
+    }
+
+    case 'PLAY_DEV_CARD': {
+      const { playerId, cardType, cardArgs } = action.payload; 
+      
+      if (state.phase !== 'main') return state;
+      if (playerId !== state.currentPlayerIndex) return { ...state, gameLog: ["It's not your turn!", ...state.gameLog] };
+      if (state.hasPlayedDevCardThisTurn) {
+        return { ...state, gameLog: ["You can only play one Development Card per turn!", ...state.gameLog] };
+      }
+
+      const player = state.players[playerId];
+      const cardIndex = player.devCards.playable.indexOf(cardType);
+
+      if (cardIndex === -1) {
+         return { ...state, gameLog: ["You don't have that card available to play right now.", ...state.gameLog] };
+      }
+
+      const updatedPlayers = [...state.players];
+      const updatedDevCards = { 
+        ...player.devCards,
+        playable: [...player.devCards.playable],
+        played: [...player.devCards.played]
+      };
+      
+      updatedDevCards.playable.splice(cardIndex, 1);
+      updatedDevCards.played.push(cardType);
+      
+      updatedPlayers[playerId] = {
+        ...player,
+        devCards: updatedDevCards,
+        knightsPlayed: cardType === 'knight' ? (player.knightsPlayed || 0) + 1 : player.knightsPlayed
+      };
+
+      const draftState = { 
+        ...state, 
+        players: updatedPlayers, 
+        hasPlayedDevCardThisTurn: true 
+      };
+
+      if (cardType === 'yearOfPlenty') {
+        const args = cardArgs as CardArgsMap['yearOfPlenty']
+          if (!args?.resource1 || !args?.resource2) return state; // Fail safely if UI didn't send args
+
+          draftState.players[playerId].resources[args.resource1] += 1;
+          draftState.players[playerId].resources[args.resource2] += 1;
+          draftState.gameLog = [`Player ${playerId + 1} played Year of Plenty and took ${args.resource1} and ${args.resource2}.`, ...draftState.gameLog];
+      } 
+      
+      else if (cardType === 'monopoly') {
+          const args = cardArgs as CardArgsMap['monopoly']
+          if (!args?.monopolyResource) return state;
+          
+          let stolenAmount = 0;
+          // Loop through all other players and take that resource
+          draftState.players = draftState.players.map(p => {
+              if (p.id === playerId) return p; // Skip the player who played the card
+              
+              const amountPlayerHas = p.resources[args.monopolyResource!];
+              stolenAmount += amountPlayerHas;
+              
+              return {
+                  ...p,
+                  resources: { ...p.resources, [args.monopolyResource!]: 0 }
+              };
+          });
+
+          // Give all stolen resources to the card player
+          draftState.players[playerId].resources[args.monopolyResource] += stolenAmount;
+          draftState.gameLog = [`Player ${playerId + 1} played Monopoly and stole ${stolenAmount} ${args.monopolyResource}!`, ...draftState.gameLog];
+      } else if (cardType === 'roadBuilding') {
+        const args = cardArgs as CardArgsMap['roadBuilding'];
+          if (!args?.road1 || !args?.road2) return state;
+
+          // Validate and place the FIRST road
+          if (!isValidRoadPlacement(args.road1[0], args.road1[1], playerId, draftState)) {
+              return { ...state, gameLog: ["Invalid first road placement for Road Building.", ...state.gameLog] };
+          }
+          const road1Id = [...args.road1].sort().join('-');
+          draftState.roads[road1Id] = { id: road1Id, playerId, nodes: args.road1 };
+
+          // Validate and place the SECOND road (against the draftState that now includes road 1)
+          if (!isValidRoadPlacement(args.road2[0], args.road2[1], playerId, draftState)) {
+              return { ...state, gameLog: ["Invalid second road placement for Road Building.", ...state.gameLog] };
+          }
+          const road2Id = [...args.road2].sort().join('-');
+          draftState.roads[road2Id] = { id: road2Id, playerId, nodes: args.road2 };
+
+          // Evaluate longest road after both are placed
+          const evaluation = evaluateLongestRoad(draftState, [playerId]);
+          draftState.players = evaluation.players;
+          draftState.longestRoad = evaluation.longestRoad;
+          
+          draftState.gameLog = [
+              `Player ${playerId + 1} played Road Building and placed 2 free roads.`,
+              ...evaluation.logs,
+              ...draftState.gameLog
+          ];
+      } else if (cardType === 'knight') {
+         // Set phase/flag to force the player to move the robber
+         draftState.gameLog = [`Player ${playerId + 1} played a Knight. Must move the Robber!`, ...draftState.gameLog];
+      }
+
+      // Check for Largest Army if a knight was played
+      // draftState = evaluateLargestArmy(draftState);
+
+      return draftState;
     }
 
     default: return state;

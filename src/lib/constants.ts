@@ -4,14 +4,16 @@ export const HEX_SIZE = 50;
 export const HEX_WIDTH = Math.sqrt(3) * HEX_SIZE;
 export const HEX_HEIGHT = 2 * HEX_SIZE;
 
-export const RESOURCE_COLORS: Record<HexResource, string> = {
+export const RESOURCE_COLORS: Record<ResourceType, string> = {
   wood: '#228B22',   
   brick: '#B22222', 
   sheep: '#7CFC00', 
   wheat: '#FFD700', 
   ore: '#708090',   
-  desert: '#F4A460', 
+   
 };
+
+export const HEX_RESOURCE_COLORS: Record<HexResource, string> = {...RESOURCE_COLORS, desert: '#F4A460'}
 
 export const RESOURCE_TYPES: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
 

@@ -1,9 +1,11 @@
-import { Player, ResourceType } from "@/types/catan";
+import { useState } from 'react';
+import { Player, ResourceType, DevelopmentCardType, AnyCardArgs } from "@/types/catan";
 import { RESOURCE_COLORS } from "@/lib/constants";
-import { Users, Dice5, ChevronRight } from "lucide-react";
+import { Users, Dice5, ChevronRight, Layers, Lock, Play } from "lucide-react";
 import { clsx } from "clsx";
 import { DiceRoll } from "./DiceRoll"; // Import your animation component
 import { Road } from "./Road"; // Import the Road icon component
+import { DevCardModal } from "./DevCardModal";
 
 interface Props {
   players: Player[];
@@ -11,8 +13,11 @@ interface Props {
   myPlayerIndex: number;
   diceRoll: number | null;
   longestRoad: { playerId: number | null; length: number };
+  hasPlayedDevCardThisTurn: boolean;
   onRoll: () => void;
   onEndTurn: () => void;
+  onPlayDevCard: (cardType: DevelopmentCardType, cardArgs?: AnyCardArgs) => void;
+  onInitiateMapCard: (cardType: 'knight' | 'roadBuilding') => void;
 }
 
 const playerColors = {
@@ -25,18 +30,50 @@ const playerColors = {
   purple: 'bg-purple-700',
 };
 
+// Helper to format dev card names cleanly
+const formatCardName = (type: DevelopmentCardType) => {
+  const names: Record<string, string> = {
+    knight: 'Knight', victoryPoint: '+1 VP', roadBuilding: 'Road Bldg', yearOfPlenty: 'Yr of Plenty', monopoly: 'Monopoly'
+  };
+  return names[type] || type;
+};
+
 export function PlayerSidebar({ 
   players, 
   currentPlayerIndex, 
   myPlayerIndex, 
   diceRoll, 
   longestRoad,
+  hasPlayedDevCardThisTurn,
   onRoll, 
-  onEndTurn 
+  onEndTurn,
+  onPlayDevCard,
+  onInitiateMapCard
 }: Props) {
   const isMyTurn = currentPlayerIndex === myPlayerIndex;
 
+  // Track which card is waiting for user input
+  const [activeCardPrompt, setActiveCardPrompt] = useState<DevelopmentCardType | null>(null);
+
+  const handleInitiatePlay = (card: DevelopmentCardType) => {
+    if (card === 'monopoly' || card === 'yearOfPlenty') {
+      setActiveCardPrompt(card);
+    } else if (card === 'roadBuilding' || card === 'knight') {
+      onInitiateMapCard(card);
+    } else {
+      onPlayDevCard(card);
+    }
+  };
+
+  const handleModalSubmit = (cardArgs: AnyCardArgs) => {
+    if (activeCardPrompt) {
+      onPlayDevCard(activeCardPrompt, cardArgs);
+      setActiveCardPrompt(null);
+    }
+  };
+
   return (
+  <>
     <aside className="w-72 bg-slate-800/90 backdrop-blur border-r border-slate-700 p-4 flex flex-col gap-4 overflow-y-auto">
       
       {/* --- TURN CONTROLS SECTION --- */}
@@ -81,38 +118,84 @@ export function PlayerSidebar({
 
       {/* --- PLAYERS LIST --- */}
       <div className="space-y-3">
-        {players.map((p, idx) => (
-          <div 
-            key={p.id}
-            className={clsx(
-              "p-3 rounded-lg border-2 transition-all duration-300 relative",
-              idx === currentPlayerIndex 
-                ? "border-amber-400 bg-slate-700 shadow-lg" 
-                : "border-transparent bg-slate-800/50"
-            )}
-          >
-            {idx === myPlayerIndex && (
-              <span className="absolute -top-2 -right-1 bg-blue-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter">You</span>
-            )}
+        {players.map((p, idx) => {
+          const isMe = idx === myPlayerIndex;
+          const totalHiddenCards = (p.devCards?.playable?.length || 0) + (p.devCards?.boughtThisTurn?.length || 0);
 
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-bold text-sm flex items-center gap-2" style={{ color: p.color }}>
-                <Users size={14} /> Player {idx + 1}
-              </span>
-              <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400"><Road color={playerColors[p.color]} /> {p.longestRoadLength}</span>
-              <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400">VP: {p.victoryPoints}</span>
-            </div>
+          return (
+            <div 
+              key={p.id}
+              className={clsx(
+                "p-3 rounded-lg border-2 transition-all duration-300 relative",
+                isMe 
+                  ? "border-amber-400 bg-slate-700 shadow-lg" 
+                  : "border-transparent bg-slate-800/50"
+              )}
+            >
+              {isMe && (
+                <span className="absolute -top-2 -right-1 bg-blue-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter">You</span>
+              )}
 
-            <div className="grid grid-cols-5 gap-1 text-[10px] text-slate-300">
-              {Object.entries(p.resources).map(([res, count]) => (
-                <div key={res} className="flex flex-col items-center bg-slate-900/50 p-1 rounded border border-white/5">
-                  <div className="w-2 h-2 rounded-full mb-1" style={{ backgroundColor: RESOURCE_COLORS[res as ResourceType] }} />
-                  <span className={count > 0 ? "text-white font-bold" : "text-slate-600"}>{count}</span>
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-bold text-sm flex items-center gap-2" style={{ color: p.color }}>
+                  <Users size={14} /> Player {idx + 1}
+                </span>
+                <div className="flex gap-1">
+                  {/* Opponent Dev Card Count */}
+                  {!isMe && totalHiddenCards > 0 && (
+                    <span className="text-[10px] bg-purple-900/50 border border-purple-500/30 px-1.5 py-0.5 rounded flex items-center gap-1 text-purple-300">
+                      <Layers size={15} /> {totalHiddenCards}
+                    </span>
+                  )}
+                  <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400"><Road color={playerColors[p.color]} /> {p.longestRoadLength}</span>
+                  <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400">VP: {p.victoryPoints}</span>
                 </div>
-              ))}
+              </div>
+
+              {/* Resources */}
+              <div className="grid grid-cols-5 gap-1 text-[10px] text-slate-300 mb-2">
+                {Object.entries(p.resources).map(([res, count]) => (
+                  <div key={res} className="flex flex-col items-center bg-slate-900/50 p-1 rounded border border-white/5">
+                    <div className="w-2 h-2 rounded-full mb-1" style={{ backgroundColor: RESOURCE_COLORS[res as ResourceType] }} />
+                    <span className={count > 0 ? "text-white font-bold" : "text-slate-600"}>{count}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* LOCAL PLAYER DEV CARDS */}
+              {isMe && (p.devCards?.playable.length > 0 || p.devCards?.boughtThisTurn.length > 0) && (
+                <div className="mt-2 pt-2 border-t border-slate-700/50 flex flex-col gap-1">
+                  <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-1">Your Dev Cards</span>
+                  
+                  {/* Playable Cards */}
+                  {p.devCards.playable.map((card, i) => (
+                    <div key={`playable-${i}`} className="flex justify-between items-center bg-slate-900/50 p-1.5 rounded border border-purple-500/20">
+                      <span className="text-[10px] text-purple-300 font-bold">{formatCardName(card)}</span>
+                      {card !== 'victoryPoint' && (
+                        <button
+                          onClick={() => handleInitiatePlay(card)}
+                          disabled={!isMyTurn || hasPlayedDevCardThisTurn}
+                          className="bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1 transition-all"
+                        >
+                          <Play size={8} /> Play
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Bought This Turn (Locked) */}
+                  {p.devCards.boughtThisTurn.map((card, i) => (
+                    <div key={`locked-${i}`} className="flex justify-between items-center bg-slate-900/30 p-1.5 rounded border border-slate-700 opacity-60">
+                      <span className="text-[10px] text-slate-400 line-through">{formatCardName(card)}</span>
+                      <Lock size={10} className="text-slate-500" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div>
@@ -122,6 +205,15 @@ export function PlayerSidebar({
           </div>
         )}
       </div>
-    </aside>
+    </aside> 
+    
+    {activeCardPrompt && (
+      <DevCardModal 
+        cardType={activeCardPrompt} 
+        onClose={() => setActiveCardPrompt(null)} 
+        onSubmit={handleModalSubmit}
+      />
+    )}
+  </>
   );
 }
