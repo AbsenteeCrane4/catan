@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ResourceType, TradeOffer, Player } from '@/types/catan';
 import { BookUp } from 'lucide-react';
+import { RESOURCE_COLORS } from '@/lib/constants';
 
 const RESOURCES: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
 
@@ -73,7 +74,6 @@ export function TradeUI({
 
   for (const [res, count] of Object.entries(offerMap)) {
     const resource = res as ResourceType;
-    // Note: Ensure your Player type has a 'harbors' array of strings. 
     const harbourTypes = localPlayer.harbours?.map(h => h.type);
     const requiredRatio = getRequiredRatio(resource, harbourTypes);
     
@@ -160,6 +160,7 @@ export function TradeUI({
           <h4 className="text-slate-400 text-[9px] uppercase font-black mb-2">Offer</h4>
           {RESOURCES.map(res => (
             <div key={res} className="flex items-center justify-between mb-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: RESOURCE_COLORS[res as ResourceType] }} />
               <span className="text-[10px] text-white capitalize">{res}</span>
               <div className="flex items-center gap-1">
                 <button onClick={() => handleAdjust('offer', res, -1)} className="w-5 h-5 flex items-center justify-center bg-slate-700 text-white rounded text-xs">-</button>
@@ -174,6 +175,7 @@ export function TradeUI({
           <h4 className="text-slate-400 text-[9px] uppercase font-black mb-2">Request</h4>
           {RESOURCES.map(res => (
             <div key={res} className="flex items-center justify-between mb-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: RESOURCE_COLORS[res as ResourceType] }} />
               <span className="text-[10px] text-white capitalize">{res}</span>
               <div className="flex items-center gap-1">
                 <button onClick={() => handleAdjust('request', res, -1)} className="w-5 h-5 flex items-center justify-center bg-slate-700 text-white rounded text-xs">-</button>
