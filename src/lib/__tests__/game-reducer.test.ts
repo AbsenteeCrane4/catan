@@ -372,6 +372,24 @@ describe('Catan Game Reducer', () => {
       expect(state.players[0].resources.wood).toBe(1);
       expect(state.pendingRobberAction).toBeNull();
     });
+
+    it('blocks resource production on the hex containing the robber', () => {
+      // Move robber to hex-1 (Wood / Token 8)
+      mockState.robberHexId = 'hex-1';
+      
+      // Player 0 has a settlement on node-A (which touches hex-1)
+      mockState.settlements['node-A'] = { nodeId: 'node-A', playerId: 0, isCity: false };
+      
+      // Roll an 8 (0.5 * 6 = 3 -> floor(3) + 1 = 4.  4 + 4 = 8)
+      vi.spyOn(Math, 'random').mockReturnValue(0.5); 
+      
+      const state = catanReducer(mockState, { type: 'ROLL_DICE' });
+
+      expect(state.diceRoll).toBe(8);
+      // Player should get 0 wood because the robber is blocking hex-1
+      expect(state.players[0].resources.wood).toBe(0);
+    });
+    
   });
 
   describe('City Upgrades', () => {

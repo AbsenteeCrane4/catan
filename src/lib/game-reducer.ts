@@ -305,13 +305,15 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         if (hex.resource === 'desert') return;
         const resKey = hex.resource;
 
-        Object.values(state.settlements).forEach(settlement => {
-          const node = state.nodes.find(n => n.id === settlement.nodeId);
-          if (node && node.hexIds?.includes(hex.id)) {
-            const amount = settlement.isCity ? 2 : 1;
-            newPlayers[settlement.playerId].resources[resKey] += amount;
-          }
-        });
+        if (hex.numberToken === total && hex.id !== state.robberHexId) {
+          Object.values(state.settlements).forEach(settlement => {
+            const node = state.nodes.find(n => n.id === settlement.nodeId);
+            if (node && node.hexIds?.includes(hex.id)) {
+              const amount = settlement.isCity ? 2 : 1;
+              newPlayers[settlement.playerId].resources[resKey] += amount;
+            }
+          });
+        }
       });
 
       return { ...state, diceRoll: total, players: newPlayers, gameLog: [`Rolled a ${total}.`, ...state.gameLog] };
