@@ -100,6 +100,7 @@ export default function CatanPage({ params }: PageProps) {
               value={state.boardRadius}
               onChange={(e) => performAction({ type: 'SET_RADIUS', payload: Number(e.target.value) })}
               className="accent-blue-500 h-1 w-20"
+              disabled
             />
         </div>
 

@@ -660,9 +660,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
           draftState.players[playerId].resources[args.resource1] += 1;
           draftState.players[playerId].resources[args.resource2] += 1;
           draftState.gameLog = [`Player ${playerId + 1} played Year of Plenty and took ${args.resource1} and ${args.resource2}.`, ...draftState.gameLog];
-      } 
-      
-      else if (cardType === 'monopoly') {
+      } else if (cardType === 'monopoly') {
           const args = cardArgs as CardArgsMap['monopoly']
           if (!args?.monopolyResource) return state;
           
