@@ -36,6 +36,7 @@ export interface GameState {
   boardRadius: number;
   hexes: Hex[];
   robberHexId: string;
+  pendingRobberAction: { status: 'moving' | 'stealing'; validVictims?: number[] } | null;
   players: Player[];
   currentPlayerIndex: number;
   diceRoll: number | null;
@@ -102,6 +103,8 @@ export type GameAction =
   | { type: 'UPGRADE_SETTLEMENT'; payload: { nodeId: string; playerId: number } }
   | { type: 'BUILD_ROAD'; payload: { nodeId1: string; nodeId2: string; playerId: number } }
   | { type: 'ROLL_DICE' }
+  | { type: 'MOVE_ROBBER'; payload: {hexId: string, playerId: number} }
+  | { type: 'STEAL_RESOURCE'; payload: {thiefId: number, victimId: number} }
   | { type: 'SET_RADIUS'; payload: number }
   | { type: 'TRADE_WITH_BANK'; payload: { playerId: number; offerResource: ResourceType; requestResource: ResourceType } }
   | { type: 'PROPOSE_TRADE'; payload: { offer: TradeOffer } }

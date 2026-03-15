@@ -5,6 +5,7 @@ import { useMultiplayerGame } from '@/hooks/useMultiplayerGame';
 import { GameBoard } from '@/components/board/GameBoard';
 import { PlayerSidebar } from '@/components/ui/PlayerSidebar';
 import { TradeUI } from '@/components/ui/TradeUI';
+import { StealModal } from '@/components/ui/StealModal';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -17,6 +18,10 @@ export default function CatanPage({ params }: PageProps) {
   const [pendingRoadBuildingRoads, setPendingRoadBuildingRoads] = useState<[string, string][]>([]);
   
   const { state, performAction } = useMultiplayerGame(gameId, myPlayerIndex);
+
+  const isMyTurn = state?.currentPlayerIndex === myPlayerIndex;
+  const isMovingRobber = state?.pendingRobberAction?.status === 'moving' && isMyTurn;
+  const isStealing = state?.pendingRobberAction?.status === 'stealing' && isMyTurn;
 
   // Intercept road building clicks before they hit performAction
   const handleEdgeClick = (n1: string, n2: string) => {
@@ -43,6 +48,15 @@ export default function CatanPage({ params }: PageProps) {
         setActiveMapAction('none');
         setPendingRoadBuildingRoads([]);
       }
+    }
+  };
+
+  const handleHexClick = (hexId: string) => {
+    if (isMovingRobber) {
+      performAction({ 
+        type: 'MOVE_ROBBER', 
+        payload: { hexId, playerId: myPlayerIndex } 
+      });
     }
   };
 
@@ -93,6 +107,12 @@ export default function CatanPage({ params }: PageProps) {
           </div>
         )}
 
+        {isMovingRobber && (
+          <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-6 py-3 rounded-full font-bold shadow-xl shadow-purple-900/50 animate-pulse z-20 border border-purple-400">
+            Select a tile to place the Robber
+          </div>
+        )}
+
         <div className="absolute top-4 left-4 z-10 bg-slate-800/80 p-3 rounded-xl border border-white/10 backdrop-blur-md flex items-center gap-3">
            <span className="text-[10px] font-bold text-slate-400 uppercase">Map Zoom</span>
            <input
@@ -107,6 +127,8 @@ export default function CatanPage({ params }: PageProps) {
         <GameBoard 
           state={state} 
           pendingRoads={pendingRoadBuildingRoads}
+          isMovingRobber={isMovingRobber}
+          onHexClick={handleHexClick}
           onBuildSettlement={(nodeId) => performAction({ type: 'BUILD_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex }})}
           onBuildRoad={handleEdgeClick}
           onUpgradeSettlement={(nodeId) => performAction({ type: 'UPGRADE_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex }})}
@@ -142,6 +164,18 @@ export default function CatanPage({ params }: PageProps) {
           </div>
         </div>
       </aside>
+
+      {/* Steal Modal */}
+      {isStealing && state.pendingRobberAction?.validVictims && (
+        <StealModal 
+          victims={state.pendingRobberAction.validVictims}
+          players={state.players}
+          onSelect={(victimId) => performAction({ 
+            type: 'STEAL_RESOURCE', 
+            payload: { thiefId: myPlayerIndex, victimId } 
+          })}
+        />
+      )}
     </div>
   );
 }

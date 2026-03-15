@@ -11,6 +11,7 @@ export const createInitialState = (radius = 2): GameState => {
     boardRadius: radius,
     hexes: hexes,
     robberHexId: hexes.find(h => h.resource === 'desert')?.id || '', // Place robber on desert
+    pendingRobberAction: null,
     nodes: nodes,
     settlements: {},
     roads: {},
@@ -189,6 +190,44 @@ export function evaluateLongestRoad(state: GameState, affectedPlayerIds: number[
   };
 }
 
+function executeSteal(state: GameState, thiefId: number, victimId: number): GameState {
+  const victim = state.players[victimId];
+  const thief = state.players[thiefId];
+
+  const availableResources: ResourceType[] = [];
+  Object.entries(victim.resources).forEach(([res, count]) => {
+    for (let i = 0; i < count; i++) availableResources.push(res as ResourceType);
+  });
+
+  if (availableResources.length === 0) {
+    return {
+      ...state,
+      pendingRobberAction: null,
+      gameLog: [`Player ${thiefId + 1} tried to steal, but Player ${victimId + 1} had no resources.`, ...state.gameLog]
+    };
+  }
+
+  const stolenIndex = Math.floor(Math.random() * availableResources.length);
+  const stolenRes = availableResources[stolenIndex];
+
+  const newPlayers = [...state.players];
+  newPlayers[victimId] = {
+    ...victim,
+    resources: { ...victim.resources, [stolenRes]: victim.resources[stolenRes] - 1 }
+  };
+  newPlayers[thiefId] = {
+    ...thief,
+    resources: { ...thief.resources, [stolenRes]: thief.resources[stolenRes] + 1 }
+  };
+
+  return {
+    ...state,
+    players: newPlayers,
+    pendingRobberAction: null,
+    gameLog: [`Player ${thiefId + 1} stole a resource from Player ${victimId + 1}.`, ...state.gameLog]
+  };
+}
+
 export function catanReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'SYNC_STATE':
@@ -250,7 +289,14 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       const die2 = Math.floor(Math.random() * 6) + 1;
       const total = die1 + die2;
 
-      if (total === 7) return { ...state, diceRoll: 7, gameLog: ["7 rolled! Robber active.", ...state.gameLog] };
+      if (total === 7) {
+        return { 
+          ...state, 
+          diceRoll: 7, 
+          pendingRobberAction: { status: 'moving' },
+          gameLog: ["7 rolled! Move the robber.", ...state.gameLog] 
+        };
+      }
 
       const producingHexes = state.hexes.filter(h => h.numberToken === total);
       const newPlayers = state.players.map(p => ({ ...p, resources: { ...p.resources } }));
@@ -269,6 +315,52 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       });
 
       return { ...state, diceRoll: total, players: newPlayers, gameLog: [`Rolled a ${total}.`, ...state.gameLog] };
+    }
+
+    case 'MOVE_ROBBER': {
+      const { hexId, playerId } = action.payload;
+
+      const targetHex = state.hexes.find(h => h.id === hexId);
+      if (!targetHex || state.robberHexId === hexId) return state; // Can't stay on the same hex
+
+      // 1. Find all nodes attached to this hex
+      const adjacentNodes = state.nodes.filter(n => n.hexIds?.includes(hexId));
+      const adjacentNodeIds = adjacentNodes.map(n => n.id);
+
+      // 2. Identify unique players with resources to steal from
+      const victims = new Set<number>();
+      Object.values(state.settlements).forEach(settlement => {
+        if (adjacentNodeIds.includes(settlement.nodeId) && settlement.playerId !== playerId) {
+          const p = state.players[settlement.playerId];
+          const totalRes = Object.values(p.resources).reduce((sum, count) => sum + count, 0);
+          
+          if (totalRes > 0) victims.add(settlement.playerId);
+        }
+      });
+
+      const validVictims = Array.from(victims);
+      let newState = { ...state, robberHexId: hexId };
+
+      // 3. Route the state based on the number of available victims
+      if (validVictims.length === 0) {
+        // Nobody to steal from
+        newState.pendingRobberAction = null;
+        newState.gameLog = [`Player ${playerId + 1} moved the robber, but nobody was there to rob.`, ...state.gameLog];
+      } else if (validVictims.length === 1) {
+        // Only one option: Auto-steal (DRY)
+        newState = executeSteal(newState, playerId, validVictims[0]);
+      } else {
+        // Multiple options: Pause and ask the player
+        newState.pendingRobberAction = { status: 'stealing', validVictims };
+        newState.gameLog = [`Player ${playerId + 1} moved the robber. Waiting for victim selection...`, ...state.gameLog];
+      }
+
+      return newState;
+    }
+
+    case 'STEAL_RESOURCE': {
+      const { thiefId, victimId } = action.payload;
+      return executeSteal(state, thiefId, victimId);
     }
 
     case 'END_TURN': {
