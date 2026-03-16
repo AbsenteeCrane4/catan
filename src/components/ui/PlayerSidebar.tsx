@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Player, ResourceType, DevelopmentCardType, AnyCardArgs } from "@/types/catan";
 import { RESOURCE_COLORS } from "@/lib/constants";
-import { Users, Dice5, ChevronRight, Layers, Lock, Play } from "lucide-react";
+import { Users, Dice5, ChevronRight, Layers, Lock, Play, Shield } from "lucide-react";
 import { clsx } from "clsx";
 import { DiceRoll } from "./DiceRoll"; // Import your animation component
 import { Road } from "./Road"; // Import the Road icon component
@@ -54,6 +54,9 @@ export function PlayerSidebar({
 
   // Track which card is waiting for user input
   const [activeCardPrompt, setActiveCardPrompt] = useState<DevelopmentCardType | null>(null);
+
+  // Derive the current holder of the Largest Army
+  const largestArmyHolder = players.find(p => p.largestArmy);
 
   const handleInitiatePlay = (card: DevelopmentCardType) => {
     if (card === 'monopoly' || card === 'yearOfPlenty') {
@@ -137,18 +140,23 @@ export function PlayerSidebar({
               )}
 
               <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-sm flex items-center gap-2" style={{ color: p.color }}>
+                <span className="font-bold text-sm flex items-center gap-1" style={{ color: p.color }}>
                   <Users size={14} /> Player {idx + 1}
                 </span>
-                <div className="flex gap-1">
+                <div className="flex gap-1 items-center">
                   {/* Opponent Dev Card Count */}
                   {!isMe && totalHiddenCards > 0 && (
                     <span className="text-[10px] bg-purple-900/50 border border-purple-500/30 px-1.5 py-0.5 rounded flex items-center gap-1 text-purple-300">
                       <Layers size={15} /> {totalHiddenCards}
                     </span>
                   )}
-                  <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400"><Road color={playerColors[p.color]} /> {p.longestRoadLength}</span>
-                  <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400">VP: {p.victoryPoints}</span>
+                  <span className="text-[10px] bg-slate-950 px-1 py-0.5 rounded text-slate-400 flex items-center gap-1">
+                    <Shield size={10} className="text-red-400" /> {p.knightsPlayed}
+                  </span>
+                  <span className="text-[10px] bg-slate-950 px-1 py-0.5 rounded text-slate-400 flex items-center gap-1">
+                    <Road color={playerColors[p.color]} /> {p.longestRoadLength}
+                  </span>
+                  <span className="text-[10px] bg-slate-950 px-1.5 py-0.5 rounded text-slate-400 flex items-center gap-1">VP: {p.victoryPoints}</span>
                 </div>
               </div>
 
@@ -198,10 +206,16 @@ export function PlayerSidebar({
         })}
       </div>
 
-      <div>
+      {/* --- ACHIEVEMENTS BANNERS --- */}
+      <div className="flex flex-col gap-2 mt-4">
         {longestRoad.playerId !== null && (
-          <div className="bg-orange-600/20 border border-orange-500 text-orange-400 p-2 rounded text-xs font-bold text-center mt-4">
+          <div className="bg-orange-600/20 border border-orange-500 text-orange-400 p-2 rounded text-xs font-bold text-center">
             👑 Player {longestRoad.playerId + 1} holds the Longest Road ({longestRoad.length})
+          </div>
+        )}
+        {largestArmyHolder && (
+          <div className="bg-red-600/20 border border-red-500 text-red-400 p-2 rounded text-xs font-bold text-center">
+            ⚔️ Player {largestArmyHolder.id + 1} holds the Largest Army ({largestArmyHolder.knightsPlayed})
           </div>
         )}
       </div>
