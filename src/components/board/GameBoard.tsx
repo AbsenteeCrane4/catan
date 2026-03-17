@@ -9,8 +9,10 @@ import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { HarbourLayer } from './HarbourLayer';
 
 interface GameBoardProps {
-  state: GameState; // Accept the whole state object
+  state: GameState;
   pendingRoads?: [string, string][];
+  isMovingRobber?: boolean;
+  onHexClick?: (hexId: string) => void;
   onBuildSettlement: (nodeId: string) => void;
   onBuildRoad: (nodeId1: string, nodeId2: string) => void;
   onUpgradeSettlement: (nodeId: string) => void;
@@ -19,6 +21,8 @@ interface GameBoardProps {
 export function GameBoard({ 
   state: { hexes, nodes, settlements, roads, harbours, boardRadius: radius, robberHexId },
   pendingRoads = [],
+  isMovingRobber,
+  onHexClick,
   onBuildSettlement,
   onBuildRoad, 
   onUpgradeSettlement 
@@ -49,7 +53,14 @@ export function GameBoard({
         className="w-full h-full max-h-[85vh] drop-shadow-2xl"
       >
         <g id="hex-layer">
-          {hexes.map(hex => <HexTile key={hex.id} hex={hex} />)}
+          {hexes.map(hex => (
+            <HexTile 
+              key={hex.id} 
+              hex={hex} 
+              isSelectable={isMovingRobber && hex.id !== robberHexId}
+              onClick={() => isMovingRobber && onHexClick?.(hex.id)}
+            />
+          ))}
         </g>
 
         <HarbourLayer harbours={harbours} />

@@ -3,7 +3,13 @@ import { hexToPixel } from "@/lib/hex-utils";
 import { HEX_RESOURCE_COLORS, HEX_SIZE } from "@/lib/constants";
 import { clsx } from "clsx";
 
-export function HexTile({ hex }: { hex: Hex }) {
+interface HexTileProps {
+  hex: Hex;
+  isSelectable?: boolean;
+  onClick?: () => void;
+}
+
+export function HexTile({ hex, isSelectable, onClick }: HexTileProps) {
   const { x, y } = hexToPixel(hex.q, hex.r);
   
   // Calculate polygon points
@@ -15,13 +21,23 @@ export function HexTile({ hex }: { hex: Hex }) {
   }
 
   return (
-    <g transform={`translate(${x}, ${y})`} className="group">
+    <g 
+      transform={`translate(${x}, ${y})`} 
+      className={clsx(
+        "group transition-all duration-300",
+        isSelectable && "cursor-pointer hover:brightness-125 hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]"
+      )}
+      onClick={isSelectable ? onClick : undefined}
+    >
       <polygon
         points={points.join(" ")}
         fill={HEX_RESOURCE_COLORS[hex.resource]}
         stroke="#f8fafc"
         strokeWidth="2"
-        className="transition-opacity hover:opacity-90 cursor-pointer"
+        className={clsx(
+          "transition-opacity",
+          !isSelectable && "hover:opacity-90 cursor-pointer"
+        )}
       />
       {hex.resource !== 'desert' && (
         <g className="pointer-events-none">

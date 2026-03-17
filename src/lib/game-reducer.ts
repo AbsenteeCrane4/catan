@@ -11,6 +11,7 @@ export const createInitialState = (radius = 2): GameState => {
     boardRadius: radius,
     hexes: hexes,
     robberHexId: hexes.find(h => h.resource === 'desert')?.id || '', // Place robber on desert
+    pendingRobberAction: null,
     nodes: nodes,
     settlements: {},
     roads: {},
@@ -189,6 +190,107 @@ export function evaluateLongestRoad(state: GameState, affectedPlayerIds: number[
   };
 }
 
+export function evaluateLargestArmy(state: GameState): GameState {
+  let currentHolderId: number | null = null;
+  let maxKnights = 0;
+
+  // 1. Find the current holder and the highest number of knights played
+  state.players.forEach(p => {
+    if (p.largestArmy) currentHolderId = p.id;
+    if (p.knightsPlayed > maxKnights) maxKnights = p.knightsPlayed;
+  });
+
+  // 2. A player must have at least 3 played knights to qualify
+  if (maxKnights < 3) return state;
+
+  // 3. Find who currently has the max amount
+  const candidates = state.players.filter(p => p.knightsPlayed === maxKnights);
+  let newHolderId: number | null = currentHolderId;
+
+  if (currentHolderId !== null) {
+    // The current holder keeps the title if there is a tie
+    const holderStillHasMax = candidates.some(c => c.id === currentHolderId);
+    if (!holderStillHasMax && candidates.length === 1) {
+      newHolderId = candidates[0].id;
+    }
+  } else if (candidates.length === 1) {
+    // First player to hit 3 gets the title
+    newHolderId = candidates[0].id;
+  }
+
+  // 4. If the title changed hands, update VP and state
+  if (newHolderId !== currentHolderId) {
+    const updatedPlayers = [...state.players];
+    const logs: string[] = [];
+
+    // Deduct 2 VP from the loser
+    if (currentHolderId !== null) {
+      updatedPlayers[currentHolderId] = {
+        ...updatedPlayers[currentHolderId],
+        largestArmy: false,
+        victoryPoints: updatedPlayers[currentHolderId].victoryPoints - 2
+      };
+      logs.push(`Player ${currentHolderId + 1} lost the Largest Army.`);
+    }
+
+    // Award 2 VP to the winner
+    if (newHolderId !== null) {
+      updatedPlayers[newHolderId] = {
+        ...updatedPlayers[newHolderId],
+        largestArmy: true,
+        victoryPoints: updatedPlayers[newHolderId].victoryPoints + 2
+      };
+      logs.push(`Player ${newHolderId + 1} claimed the Largest Army! (+2 VP)`);
+    }
+
+    return {
+      ...state,
+      players: updatedPlayers,
+      gameLog: [...logs, ...state.gameLog]
+    };
+  }
+
+  return state;
+}
+
+function executeSteal(state: GameState, thiefId: number, victimId: number): GameState {
+  const victim = state.players[victimId];
+  const thief = state.players[thiefId];
+
+  const availableResources: ResourceType[] = [];
+  Object.entries(victim.resources).forEach(([res, count]) => {
+    for (let i = 0; i < count; i++) availableResources.push(res as ResourceType);
+  });
+
+  if (availableResources.length === 0) {
+    return {
+      ...state,
+      pendingRobberAction: null,
+      gameLog: [`Player ${thiefId + 1} tried to steal, but Player ${victimId + 1} had no resources.`, ...state.gameLog]
+    };
+  }
+
+  const stolenIndex = Math.floor(Math.random() * availableResources.length);
+  const stolenRes = availableResources[stolenIndex];
+
+  const newPlayers = [...state.players];
+  newPlayers[victimId] = {
+    ...victim,
+    resources: { ...victim.resources, [stolenRes]: victim.resources[stolenRes] - 1 }
+  };
+  newPlayers[thiefId] = {
+    ...thief,
+    resources: { ...thief.resources, [stolenRes]: thief.resources[stolenRes] + 1 }
+  };
+
+  return {
+    ...state,
+    players: newPlayers,
+    pendingRobberAction: null,
+    gameLog: [`Player ${thiefId + 1} stole a resource from Player ${victimId + 1}.`, ...state.gameLog]
+  };
+}
+
 export function catanReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'SYNC_STATE':
@@ -250,7 +352,14 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
       const die2 = Math.floor(Math.random() * 6) + 1;
       const total = die1 + die2;
 
-      if (total === 7) return { ...state, diceRoll: 7, gameLog: ["7 rolled! Robber active.", ...state.gameLog] };
+      if (total === 7) {
+        return { 
+          ...state, 
+          diceRoll: 7, 
+          pendingRobberAction: { status: 'moving' },
+          gameLog: ["7 rolled! Move the robber.", ...state.gameLog] 
+        };
+      }
 
       const producingHexes = state.hexes.filter(h => h.numberToken === total);
       const newPlayers = state.players.map(p => ({ ...p, resources: { ...p.resources } }));
@@ -259,16 +368,64 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         if (hex.resource === 'desert') return;
         const resKey = hex.resource;
 
-        Object.values(state.settlements).forEach(settlement => {
-          const node = state.nodes.find(n => n.id === settlement.nodeId);
-          if (node && node.hexIds?.includes(hex.id)) {
-            const amount = settlement.isCity ? 2 : 1;
-            newPlayers[settlement.playerId].resources[resKey] += amount;
-          }
-        });
+        if (hex.numberToken === total && hex.id !== state.robberHexId) {
+          Object.values(state.settlements).forEach(settlement => {
+            const node = state.nodes.find(n => n.id === settlement.nodeId);
+            if (node && node.hexIds?.includes(hex.id)) {
+              const amount = settlement.isCity ? 2 : 1;
+              newPlayers[settlement.playerId].resources[resKey] += amount;
+            }
+          });
+        }
       });
 
       return { ...state, diceRoll: total, players: newPlayers, gameLog: [`Rolled a ${total}.`, ...state.gameLog] };
+    }
+
+    case 'MOVE_ROBBER': {
+      const { hexId, playerId } = action.payload;
+
+      const targetHex = state.hexes.find(h => h.id === hexId);
+      if (!targetHex || state.robberHexId === hexId) return state; // Can't stay on the same hex
+
+      // 1. Find all nodes attached to this hex
+      const adjacentNodes = state.nodes.filter(n => n.hexIds?.includes(hexId));
+      const adjacentNodeIds = adjacentNodes.map(n => n.id);
+
+      // 2. Identify unique players with resources to steal from
+      const victims = new Set<number>();
+      Object.values(state.settlements).forEach(settlement => {
+        if (adjacentNodeIds.includes(settlement.nodeId) && settlement.playerId !== playerId) {
+          const p = state.players[settlement.playerId];
+          const totalRes = Object.values(p.resources).reduce((sum, count) => sum + count, 0);
+          
+          if (totalRes > 0) victims.add(settlement.playerId);
+        }
+      });
+
+      const validVictims = Array.from(victims);
+      let newState = { ...state, robberHexId: hexId };
+
+      // 3. Route the state based on the number of available victims
+      if (validVictims.length === 0) {
+        // Nobody to steal from
+        newState.pendingRobberAction = null;
+        newState.gameLog = [`Player ${playerId + 1} moved the robber, but nobody was there to rob.`, ...state.gameLog];
+      } else if (validVictims.length === 1) {
+        // Only one option: Auto-steal (DRY)
+        newState = executeSteal(newState, playerId, validVictims[0]);
+      } else {
+        // Multiple options: Pause and ask the player
+        newState.pendingRobberAction = { status: 'stealing', validVictims };
+        newState.gameLog = [`Player ${playerId + 1} moved the robber. Waiting for victim selection...`, ...state.gameLog];
+      }
+
+      return newState;
+    }
+
+    case 'STEAL_RESOURCE': {
+      const { thiefId, victimId } = action.payload;
+      return executeSteal(state, thiefId, victimId);
     }
 
     case 'END_TURN': {
@@ -647,7 +804,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
         knightsPlayed: cardType === 'knight' ? (player.knightsPlayed || 0) + 1 : player.knightsPlayed
       };
 
-      const draftState = { 
+      let draftState = { 
         ...state, 
         players: updatedPlayers, 
         hasPlayedDevCardThisTurn: true 
@@ -660,9 +817,7 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
           draftState.players[playerId].resources[args.resource1] += 1;
           draftState.players[playerId].resources[args.resource2] += 1;
           draftState.gameLog = [`Player ${playerId + 1} played Year of Plenty and took ${args.resource1} and ${args.resource2}.`, ...draftState.gameLog];
-      } 
-      
-      else if (cardType === 'monopoly') {
+      } else if (cardType === 'monopoly') {
           const args = cardArgs as CardArgsMap['monopoly']
           if (!args?.monopolyResource) return state;
           
@@ -712,12 +867,11 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
               ...draftState.gameLog
           ];
       } else if (cardType === 'knight') {
-         // Set phase/flag to force the player to move the robber
+         // Trigger the robber movement phase
+         draftState.pendingRobberAction = { status: 'moving' };
+         draftState = evaluateLargestArmy(draftState);
          draftState.gameLog = [`Player ${playerId + 1} played a Knight. Must move the Robber!`, ...draftState.gameLog];
       }
-
-      // Check for Largest Army if a knight was played
-      // draftState = evaluateLargestArmy(draftState);
 
       return draftState;
     }

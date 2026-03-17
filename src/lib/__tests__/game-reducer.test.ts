@@ -281,6 +281,117 @@ describe('Catan Game Reducer', () => {
   });
   });
 
+  describe('Robber Mechanics (Main Phase)', () => {
+    beforeEach(() => {
+      mockState.phase = 'main';
+      mockState.currentPlayerIndex = 0;
+      mockState.setupActionRequired = 'none';
+    });
+
+    it('sets state to moving when a 7 is rolled', () => {
+      // Mock random for two 6-sided dice to equal 7
+      // 0.4 * 6 = 2.4 -> floor(2.4) + 1 = 3
+      // 0.6 * 6 = 3.6 -> floor(3.6) + 1 = 4
+      vi.spyOn(Math, 'random')
+        .mockReturnValueOnce(0.4) 
+        .mockReturnValueOnce(0.6); 
+
+      const state = catanReducer(mockState, { type: 'ROLL_DICE' });
+
+      expect(state.diceRoll).toBe(7);
+      expect(state.pendingRobberAction?.status).toBe('moving');
+    });
+
+    it('executes MOVE_ROBBER and automatically steals when only one victim is present', () => {
+      mockState.pendingRobberAction = { status: 'moving' };
+      mockState.robberHexId = 'hex-1';
+
+      // Player 1 has a settlement on node-C (which touches hex-2)
+      mockState.settlements['node-C'] = { nodeId: 'node-C', playerId: 1, isCity: false };
+      
+      // Give Player 1 a resource to steal
+      mockState.players[1].resources.brick = 1;
+
+      // Player 0 moves robber from hex-1 to hex-2
+      const state = catanReducer(mockState, { 
+        type: 'MOVE_ROBBER', 
+        payload: { hexId: 'hex-2', playerId: 0 } 
+      });
+
+      expect(state.robberHexId).toBe('hex-2');
+      // Since Player 1 is the only victim on hex-2, it auto-steals
+      expect(state.players[1].resources.brick).toBe(0);
+      expect(state.players[0].resources.brick).toBe(1);
+      
+      // Action is fully resolved
+      expect(state.pendingRobberAction).toBeNull();
+    });
+
+    it('sets state to stealing when multiple victims are present on the target hex', () => {
+      // We must inject a 3rd player specifically for this test since the mock initializes with 2
+      const state3Players = {
+        ...mockState,
+        players: [
+          ...mockState.players,
+          { id: 2, color: 'blue', resources: { wood: 0, brick: 0, wheat: 0, sheep: 0, ore: 0 }, victoryPoints: 0, knightsPlayed: 0, longestRoad: 0, devCards: [], harbours: [] }
+        ],
+        pendingRobberAction: { status: 'moving' as const }
+      };
+
+      // Player 1 is on node-B (touches hex-2)
+      state3Players.settlements['node-B'] = { nodeId: 'node-B', playerId: 1, isCity: false };
+      // Player 2 is on node-C (touches hex-2)
+      state3Players.settlements['node-C'] = { nodeId: 'node-C', playerId: 2, isCity: false };
+
+      // Give both victims resources to make them valid targets
+      state3Players.players[1].resources.brick = 1;
+      state3Players.players[2].resources.wood = 1;
+
+      const nextState = catanReducer(state3Players as GameState, { 
+        type: 'MOVE_ROBBER', 
+        payload: { hexId: 'hex-2', playerId: 0 } 
+      });
+
+      // Player 0 now has to choose between Player 1 and Player 2
+      expect(nextState.pendingRobberAction?.status).toBe('stealing');
+      expect(nextState.pendingRobberAction?.validVictims).toContain(1);
+      expect(nextState.pendingRobberAction?.validVictims).toContain(2);
+      expect(nextState.pendingRobberAction?.validVictims).not.toContain(0);
+    });
+
+    it('resolves STEAL_RESOURCE correctly', () => {
+      mockState.pendingRobberAction = { status: 'stealing', validVictims: [1] };
+      mockState.players[1].resources.wood = 1;
+
+      const state = catanReducer(mockState, { 
+        type: 'STEAL_RESOURCE', 
+        payload: { thiefId: 0, victimId: 1 } 
+      });
+
+      expect(state.players[1].resources.wood).toBe(0);
+      expect(state.players[0].resources.wood).toBe(1);
+      expect(state.pendingRobberAction).toBeNull();
+    });
+
+    it('blocks resource production on the hex containing the robber', () => {
+      // Move robber to hex-1 (Wood / Token 8)
+      mockState.robberHexId = 'hex-1';
+      
+      // Player 0 has a settlement on node-A (which touches hex-1)
+      mockState.settlements['node-A'] = { nodeId: 'node-A', playerId: 0, isCity: false };
+      
+      // Roll an 8 (0.5 * 6 = 3 -> floor(3) + 1 = 4.  4 + 4 = 8)
+      vi.spyOn(Math, 'random').mockReturnValue(0.5); 
+      
+      const state = catanReducer(mockState, { type: 'ROLL_DICE' });
+
+      expect(state.diceRoll).toBe(8);
+      // Player should get 0 wood because the robber is blocking hex-1
+      expect(state.players[0].resources.wood).toBe(0);
+    });
+    
+  });
+
   describe('City Upgrades', () => {
     beforeEach(() => {
       mockState.phase = 'main';
