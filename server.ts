@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import next from 'next';
 import { Server } from 'socket.io';
 
-import { catanReducer, createInitialState } from '@/lib/game-reducer';
+import { catanReducer, createInitialState, evaluateWinCondition } from '@/lib/game-reducer';
 import { GameState } from '@/types/catan';
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -21,6 +21,19 @@ app.prepare().then(() => {
   const io = new Server(httpServer);
 
     io.on('connection', (socket) => {
+
+    const checkAndCleanupRoom = (roomId: string) => {
+      const room = io.sockets.adapter.rooms.get(roomId);
+      // If the room doesn't exist anymore, or has 0 connected sockets
+      if (!room || room.size === 0) {
+        const gameId = roomId.replace('game-', '');
+        console.log(`Room ${gameId} is empty. Cleaning up game state.`);
+        console.log(`getting room ${gameId}: ${activeGames.get(gameId)}`) // should show getting room ${gameId}: [object Object]
+        activeGames.delete(gameId); 
+        console.log(`getting room ${gameId}: ${activeGames.get(gameId)}`) // should show getting room ${gameId}: undefined
+        }
+    };
+
     socket.on('join-room', ({ gameId, playerIndex }) => {
       socket.join(`game-${gameId}`);
 
@@ -43,13 +56,28 @@ app.prepare().then(() => {
         }
 
         const newState = catanReducer(state, action);
-        activeGames.set(gameId, newState);
+        const finalState = evaluateWinCondition(newState)
+        activeGames.set(gameId, finalState);
         io.to(`game-${gameId}`).emit('game-update', { type: 'SYNC_STATE', payload: newState });
       }
     });
 
-    socket.on('disconnect', () => {
-      // Future: Handle player leaving
+    socket.on('leave_room', (roomId: string) => {
+      console.log("Leaving room on victory")
+      socket.leave(roomId);
+      checkAndCleanupRoom(roomId);
+    });
+
+    socket.on('disconnecting', () => {
+      for (const roomId of socket.rooms) {
+      if (roomId !== socket.id) {
+        // We delay the check slightly to let the disconnect fully process
+        console.log("Leaving room on disconnect")
+        setTimeout(() => {
+          checkAndCleanupRoom(roomId);
+        }, 1000);
+      }
+    }
     });
   });
 
