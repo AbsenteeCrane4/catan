@@ -103,3 +103,45 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+  
+  deploy:
+    name: Deploy to Production Server
+    needs: docker-publish
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-latest
+    permissions: 
+      packages: read
+
+    steps:
+      - name: Execute Remote SSH Commands
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          # Passes the temporary GitHub token into the SSH environment
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USERNAME: ${{ github.actor }}
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          REGISTRY: ${{ env.REGISTRY }}
+        with:
+          host: ${{ secrets.SERVER_ADDRESS }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: ${{ secrets.SERVER_PORT }}
+          envs: GH_TOKEN,USERNAME,IMAGE, REGISTRY
+          script: |
+            # 1. Navigate to the directory containing your docker-compose.yml
+            cd ~/Catan
+            
+            # 2. Log Docker into GHCR using the temporary Actions token
+            echo $GH_TOKEN | docker login $REGISTRY -u $USERNAME --password-stdin
+            
+            # 3. Pull the fresh image we just built
+            docker pull $IMAGE
+            
+            # 4. Restart the container with the new image in the background
+            docker compose up -d
+            
+            # 5. Clean up old, unused Docker images to save disk space on your server
+            docker image prune -f
+
+            # 6. Logout of the GHCR
+            docker logout $REGISTRY
