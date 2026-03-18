@@ -291,7 +291,26 @@ function executeSteal(state: GameState, thiefId: number, victimId: number): Game
   };
 }
 
-export function catanReducer(state: GameState, action: GameAction): GameState {
+export function evaluateWinCondition(state: GameState): GameState {
+  if (state.isGameOver) return state;
+  const winner = state.players.find(p => p.victoryPoints >= 10);
+
+  if (winner) {
+    return {
+      ...state,
+      isGameOver: true,
+      winnerId: winner.id,
+      gameLog: [
+        `🏆 Game Over! Player ${winner.id + 1} wins with ${winner.victoryPoints} Victory Points!`, 
+        ...state.gameLog
+      ]
+    };
+  }
+
+  return state;
+}
+
+export function coreReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'SYNC_STATE':
       return action.payload;
@@ -878,4 +897,10 @@ export function catanReducer(state: GameState, action: GameAction): GameState {
 
     default: return state;
   }
+}
+
+export function catanReducer(state: GameState, action: GameAction): GameState {
+  const nextState = coreReducer(state, action);
+  const finalState = evaluateWinCondition(nextState);
+  return finalState;
 }

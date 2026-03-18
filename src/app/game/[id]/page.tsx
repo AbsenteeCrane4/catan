@@ -6,6 +6,8 @@ import { GameBoard } from '@/components/board/GameBoard';
 import { PlayerSidebar } from '@/components/ui/PlayerSidebar';
 import { TradeUI } from '@/components/ui/TradeUI';
 import { StealModal } from '@/components/ui/StealModal';
+import { GameOverModal } from '@/components/ui/GameOverModal';
+import { useRouter } from 'next/navigation';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -13,11 +15,12 @@ interface PageProps {
 
 export default function CatanPage({ params }: PageProps) {
   const { id: gameId } = use(params);
+  const router = useRouter()
   const [myPlayerIndex, setMyPlayerIndex] = useState<number | null>(null);
   const [activeMapAction, setActiveMapAction] = useState<'none' | 'roadBuilding' | 'knight'>('none');
   const [pendingRoadBuildingRoads, setPendingRoadBuildingRoads] = useState<[string, string][]>([]);
   
-  const { state, performAction } = useMultiplayerGame(gameId, myPlayerIndex);
+  const { state, performAction, leaveRoom } = useMultiplayerGame(gameId, myPlayerIndex);
 
   const isMyTurn = state?.currentPlayerIndex === myPlayerIndex;
   const isMovingRobber = state?.pendingRobberAction?.status === 'moving' && isMyTurn;
@@ -176,6 +179,19 @@ export default function CatanPage({ params }: PageProps) {
           })}
         />
       )}
+
+      {/* Game Over Modal */}
+      {state.isGameOver && state.winnerId !== null && (
+        <GameOverModal 
+          winnerId={state.winnerId} 
+          players={state.players} 
+          onLeaveRoom={() => {
+            leaveRoom();
+            router.push('/')
+          }} 
+        />
+      )}
+
     </div>
   );
 }

@@ -20,5 +20,9 @@ export function useMultiplayerGame(gameId: string, playerIndex: number | null) {
     socket.emit('game-action', { gameId, action });
   };
 
-  return { state, performAction };
+  const leaveRoom = () => {
+    socket.emit('leave_room', gameId)
+  }
+
+  return { state, performAction, leaveRoom };
 }
