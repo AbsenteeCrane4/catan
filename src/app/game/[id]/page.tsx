@@ -7,7 +7,6 @@ import { PlayerSidebar } from '@/components/ui/PlayerSidebar';
 import { TradeUI } from '@/components/ui/TradeUI';
 import { StealModal } from '@/components/ui/StealModal';
 import { GameOverModal } from '@/components/ui/GameOverModal';
-import { socket } from '@/lib/socket-client';
 import { useRouter } from 'next/navigation';
 
 interface PageProps {
@@ -21,7 +20,7 @@ export default function CatanPage({ params }: PageProps) {
   const [activeMapAction, setActiveMapAction] = useState<'none' | 'roadBuilding' | 'knight'>('none');
   const [pendingRoadBuildingRoads, setPendingRoadBuildingRoads] = useState<[string, string][]>([]);
   
-  const { state, performAction } = useMultiplayerGame(gameId, myPlayerIndex);
+  const { state, performAction, leaveRoom } = useMultiplayerGame(gameId, myPlayerIndex);
 
   const isMyTurn = state?.currentPlayerIndex === myPlayerIndex;
   const isMovingRobber = state?.pendingRobberAction?.status === 'moving' && isMyTurn;
@@ -187,7 +186,7 @@ export default function CatanPage({ params }: PageProps) {
           winnerId={state.winnerId} 
           players={state.players} 
           onLeaveRoom={() => {
-            socket.emit('leave_room', gameId);
+            leaveRoom();
             router.push('/')
           }} 
         />
