@@ -128,20 +128,23 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           envs: GH_TOKEN,USERNAME,IMAGE, REGISTRY
           script: |
-            # 1. Navigate to the directory containing your docker-compose.yml
+            # 1. Lower case the image name
+            IMAGE="${IMAGE,,}"
+
+            # 2. Navigate to the directory containing your docker-compose.yml
             cd ~/Catan
             
-            # 2. Log Docker into GHCR using the temporary Actions token
+            # 3. Log Docker into GHCR using the temporary Actions token
             echo $GH_TOKEN | docker login $REGISTRY -u $USERNAME --password-stdin
             
-            # 3. Pull the fresh image we just built
+            # 4. Pull the fresh image we just built
             docker pull $IMAGE
             
-            # 4. Restart the container with the new image in the background
+            # 5. Restart the container with the new image in the background
             docker compose up -d
             
-            # 5. Clean up old, unused Docker images to save disk space on your server
+            # 6. Clean up old, unused Docker images
             docker image prune -f
 
-            # 6. Logout of the GHCR
+            # 7. Logout of the GHCR
             docker logout $REGISTRY
