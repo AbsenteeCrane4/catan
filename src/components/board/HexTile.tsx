@@ -21,13 +21,17 @@ export function HexTile({ hex, isSelectable, onClick }: HexTileProps) {
   }
 
   return (
-    <g 
-      transform={`translate(${x}, ${y})`} 
+    <g
+      transform={`translate(${x}, ${y})`}
       className={clsx(
         "group transition-all duration-300",
         isSelectable && "cursor-pointer hover:brightness-125 hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]"
       )}
       onClick={isSelectable ? onClick : undefined}
+      data-cy="hex"
+      data-hex-id={hex.id}
+      data-resource={hex.resource}
+      data-token={hex.numberToken ?? undefined}
     >
       <polygon
         points={points.join(" ")}

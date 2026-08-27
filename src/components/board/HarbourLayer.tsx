@@ -16,7 +16,12 @@ export function HarbourLayer({ harbours }: HarbourLayerProps) {
         const outY = harbour.y + Math.sin(harbour.angle) * DISTANCE_OUT;
         
         return (
-          <g key={harbour.id} className="pointer-events-none drop-shadow-md">
+          <g
+            key={harbour.id}
+            className="pointer-events-none drop-shadow-md"
+            data-cy="harbour"
+            data-harbour-type={harbour.type}
+          >
             {/* The Wooden Dock */}
             <line 
               x1={harbour.x} y1={harbour.y} 

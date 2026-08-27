@@ -62,10 +62,11 @@ export function GameBoard({
     <div className="flex-1 bg-slate-900 relative overflow-hidden flex items-center justify-center">
       <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:24px_24px]" />
       
-      <svg 
+      <svg
         viewBox={`${view.minX} ${view.minY} ${view.w} ${view.h}`}
         preserveAspectRatio="xMidYMid meet"
         className="w-full h-full max-h-[85vh] drop-shadow-2xl"
+        data-cy="game-board"
       >
         <g id="hex-layer">
           {hexes.map(hex => (

@@ -29,10 +29,16 @@ export function SettlementNode({ node, owner, ownerColor, onBuild, onUpgrade }: 
   };
 
   return (
-    <g 
+    <g
       transform={`translate(${node.pixelPos.x}, ${node.pixelPos.y})`}
       onClick={handleClick}
       className="cursor-pointer group"
+      data-cy="node"
+      data-node-id={node.id}
+      data-x={node.pixelPos.x}
+      data-y={node.pixelPos.y}
+      data-owner-id={owner ? owner.playerId : undefined}
+      data-is-city={owner?.isCity ? 'true' : undefined}
     >
       {/* Ghost node (Hover state for empty spots) */}
       {!owner && (

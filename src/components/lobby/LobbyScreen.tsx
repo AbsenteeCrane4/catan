@@ -67,7 +67,7 @@ export function LobbyScreen({
             onClick={copyLink}
             className="inline-flex items-center gap-2 text-sm bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 hover:bg-slate-700 transition-colors"
           >
-            <span className="font-mono font-bold tracking-widest text-amber-400">{lobby.gameId}</span>
+            <span data-cy="game-id-display" className="font-mono font-bold tracking-widest text-amber-400">{lobby.gameId}</span>
             {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="text-slate-400" />}
             <span className="text-slate-400 text-xs">{copied ? 'Copied' : 'Copy invite link'}</span>
           </button>
@@ -88,6 +88,9 @@ export function LobbyScreen({
               {lobby.seats.map(seat => (
                 <li
                   key={seat.seatIndex}
+                  data-cy="seat-item"
+                  data-seat-index={seat.seatIndex}
+                  data-seat-name={seat.name}
                   className={clsx(
                     'flex items-center gap-3 p-3 rounded-xl border transition-colors',
                     seat.seatIndex === seatIndex
@@ -134,6 +137,7 @@ export function LobbyScreen({
                   maxLength={MAX_NAME_LENGTH}
                   onChange={e => setName(e.target.value)}
                   placeholder="Enter your name"
+                  data-cy="player-name-input"
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
@@ -154,6 +158,7 @@ export function LobbyScreen({
                         title={takenBy ? `Taken by ${takenBy}` : PLAYER_COLOR_LABELS[option]}
                         aria-label={takenBy ? `${PLAYER_COLOR_LABELS[option]}, taken by ${takenBy}` : PLAYER_COLOR_LABELS[option]}
                         aria-pressed={selected}
+                        data-cy={`color-swatch-${option}`}
                         onClick={() => setColor(option)}
                         className={clsx(
                           'flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all',
@@ -176,6 +181,7 @@ export function LobbyScreen({
               <button
                 type="submit"
                 disabled={!canSubmit}
+                data-cy="submit-seat-btn"
                 className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed py-3 rounded-xl font-bold transition-all active:scale-95"
               >
                 {isSeated ? 'Update' : 'Take a seat'}
@@ -203,6 +209,7 @@ export function LobbyScreen({
                   <button
                     onClick={onStart}
                     disabled={!lobby.canStart}
+                    data-cy="start-game-btn"
                     className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed py-4 rounded-xl font-bold text-lg transition-all active:scale-95"
                   >
                     Start Game

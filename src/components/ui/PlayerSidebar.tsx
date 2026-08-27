@@ -82,7 +82,7 @@ export function PlayerSidebar({
       
       {/* --- TURN CONTROLS SECTION --- */}
       <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-4 mb-2 shrink-0">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+        <h3 data-cy="turn-indicator" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
           {isMyTurn ? "Your Turn" : `${playerName(players[currentPlayerIndex], currentPlayerIndex)}'s Turn`}
         </h3>
         
@@ -99,17 +99,19 @@ export function PlayerSidebar({
 
         <div className="w-full space-y-2">
           {!diceRoll ? (
-            <button 
+            <button
               disabled={!isMyTurn}
               onClick={onRoll}
+              data-cy="roll-dice-btn"
               className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-20 disabled:grayscale py-3 rounded-lg font-bold text-slate-900 transition-all flex items-center justify-center gap-2"
             >
               Roll Dice
             </button>
           ) : (
-            <button 
+            <button
               disabled={!isMyTurn}
               onClick={onEndTurn}
+              data-cy="end-turn-btn"
               className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-20 py-3 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2"
             >
               End Turn <ChevronRight size={18} />
@@ -127,8 +129,11 @@ export function PlayerSidebar({
           const totalHiddenCards = (p.devCards?.playable?.length || 0) + (p.devCards?.boughtThisTurn?.length || 0);
 
           return (
-            <div 
+            <div
               key={p.id}
+              data-cy="sidebar-player"
+              data-player-id={p.id}
+              data-player-color={p.color}
               className={clsx(
                 "p-3 rounded-lg border-2 transition-all duration-300 relative",
                 isMe 

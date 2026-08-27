@@ -13,6 +13,13 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "**/__tests__/**",
+    // Build output. Only present after `npm run build`, so linting it locally
+    // failed on the minified bundle's require() calls while CI — which builds on a
+    // separate runner from the lint job — never saw it.
+    "dist-server/**",
+    // Cypress recordings, not source.
+    "cypress/videos/**",
+    "cypress/screenshots/**",
   ]),
   {
     rules: {

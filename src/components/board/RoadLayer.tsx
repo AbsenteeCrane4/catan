@@ -44,8 +44,8 @@ export function RoadLayer({ nodes, roads, pendingRoads = [], playerColors, onBui
   return (
     <g className="road-layer">
       {connections.map(({ id, start, end, existingRoad, isPending }) => (
-        <g 
-          key={id} 
+        <g
+          key={id}
           onClick={(e) => {
             e.stopPropagation();
             // Prevent clicking if a road is already built OR if it's already selected as pending
@@ -54,6 +54,10 @@ export function RoadLayer({ nodes, roads, pendingRoads = [], playerColors, onBui
           className={clsx(
             (!existingRoad && !isPending) ? "cursor-pointer group" : ""
           )}
+          data-cy="edge"
+          data-node-1={start.id}
+          data-node-2={end.id}
+          data-owner-id={existingRoad ? existingRoad.playerId : undefined}
         >
           {/* 1. Invisible Hitbox (Thicker than visible road for easier clicking) */}
           <line

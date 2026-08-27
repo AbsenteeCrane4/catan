@@ -8,7 +8,11 @@
     "build": "next build && npm run build:server",
     "start": "cross-env NODE_ENV=production tsx server.ts",
     "test": "vitest",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "e2e": "start-server-and-test dev http://localhost:3000 cypress:open",
+    "e2e:headless": "start-server-and-test dev http://localhost:3000 cypress:run"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -32,9 +36,11 @@
     "@vitest/coverage-v8": "^4.0.18",
     "babel-plugin-react-compiler": "1.0.0",
     "cross-env": "^10.1.0",
+    "cypress": "^15.21.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "jsdom": "^28.1.0",
+    "start-server-and-test": "^3.0.12",
     "tailwindcss": "^4",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
