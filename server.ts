@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import next from 'next';
 import { Server } from 'socket.io';
 
-import { catanReducer, createInitialState, evaluateWinCondition } from '@/lib/game-reducer';
+import { catanReducer, createInitialState } from '@/lib/game-reducer';
 import { GameState } from '@/types/catan';
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -55,10 +55,9 @@ app.prepare().then(() => {
           return;
         }
 
-        const newState = catanReducer(state, action);
-        const finalState = evaluateWinCondition(newState)
+        const finalState = catanReducer(state, action);
         activeGames.set(gameId, finalState);
-        io.to(`game-${gameId}`).emit('game-update', { type: 'SYNC_STATE', payload: newState });
+        io.to(`game-${gameId}`).emit('game-update', { type: 'SYNC_STATE', payload: finalState });
       }
     });
 

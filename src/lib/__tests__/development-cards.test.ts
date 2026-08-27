@@ -162,6 +162,44 @@ describe('Development Cards', () => {
       expect(newState.players[0].devCards.played).toHaveLength(0);
       expect(newState.gameLog[0]).toContain("You can only play one Development Card per turn!");
     });
+
+    it('should not mutate the resources object of the pre-action state when playing Year of Plenty', () => {
+      const preActionResources = initialState.players[0].resources;
+      const preActionResourcesSnapshot = { ...preActionResources };
+
+      catanReducer(initialState, {
+        type: 'PLAY_DEV_CARD',
+        payload: { playerId: 0, cardType: 'yearOfPlenty', cardArgs: { resource1: 'wood', resource2: 'brick' } }
+      });
+
+      expect(initialState.players[0].resources).toEqual(preActionResourcesSnapshot);
+      expect(preActionResources).toEqual(preActionResourcesSnapshot);
+    });
+
+    it('should award +2 of a resource when Year of Plenty is played with the same resource twice', () => {
+      const newState = catanReducer(initialState, {
+        type: 'PLAY_DEV_CARD',
+        payload: { playerId: 0, cardType: 'yearOfPlenty', cardArgs: { resource1: 'wood', resource2: 'wood' } }
+      });
+
+      expect(newState.players[0].resources.wood).toBe(initialState.players[0].resources.wood + 2);
+    });
+
+    it('should not mutate the card player\'s resources object of the pre-action state when playing Monopoly', () => {
+      initialState.players[0].devCards.playable.push('monopoly');
+      initialState.players[1].resources.wheat = 3;
+      const preActionResources = initialState.players[0].resources;
+      const preActionResourcesSnapshot = { ...preActionResources };
+
+      const newState = catanReducer(initialState, {
+        type: 'PLAY_DEV_CARD',
+        payload: { playerId: 0, cardType: 'monopoly', cardArgs: { monopolyResource: 'wheat' } }
+      });
+
+      expect(initialState.players[0].resources).toEqual(preActionResourcesSnapshot);
+      expect(preActionResources).toEqual(preActionResourcesSnapshot);
+      expect(newState.players[0].resources.wheat).toBe(preActionResourcesSnapshot.wheat + 3);
+    });
   });
 
   describe('Turn Transitions (END_TURN)', () => {

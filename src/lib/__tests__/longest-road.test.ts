@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as GameReducer from '../../lib/game-reducer';
 import { GameState } from '../../types/catan';
 
