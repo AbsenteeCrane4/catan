@@ -1,5 +1,6 @@
 import { DevCardHandler } from "./types";
 import { withLog } from "@/lib/game/helpers/guards";
+import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const applyMonopoly: DevCardHandler<'monopoly'> = (draftState, originalState, playerId, args) => {
   // Fail safely if the UI didn't send args — the card stays in hand, but say so rather than no-op silently
@@ -32,6 +33,6 @@ export const applyMonopoly: DevCardHandler<'monopoly'> = (draftState, originalSt
   return {
     ...draftState,
     players: updatedPlayers,
-    gameLog: [`Player ${playerId + 1} played Monopoly and stole ${stolenAmount} ${resource}!`, ...draftState.gameLog]
+    gameLog: [`${nameOf(draftState, playerId)} played Monopoly and stole ${stolenAmount} ${resource}!`, ...draftState.gameLog]
   };
 };

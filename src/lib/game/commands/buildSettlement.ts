@@ -2,6 +2,7 @@ import { CommandHandler } from "./types";
 import { requireCurrentPlayer } from "@/lib/game/helpers/guards";
 import { getAdjacentNodeIds, isNodeConnectedToPlayerRoad } from "@/lib/game/helpers/board";
 import { evaluateLongestRoad } from "@/lib/game/helpers/longestRoad";
+import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const buildSettlement: CommandHandler<'BUILD_SETTLEMENT'> = (state, action) => {
   const { nodeId, playerId } = action.payload;
@@ -61,7 +62,7 @@ export const buildSettlement: CommandHandler<'BUILD_SETTLEMENT'> = (state, actio
     const alreadyOwned = playerHarbours.some(h => h.id === harbour.id);
     if (!alreadyOwned) {
       updatedPlayers[playerId].harbours = [...playerHarbours, harbour];
-      harbourLog = `Player ${playerId + 1} gained access to a ${harbour.type} harbour!`;
+      harbourLog = `${nameOf(state, playerId)} gained access to a ${harbour.type} harbour!`;
     }
   }
 
@@ -84,7 +85,7 @@ export const buildSettlement: CommandHandler<'BUILD_SETTLEMENT'> = (state, actio
     longestRoad: evaluation.longestRoad,
     setupActionRequired: isInitial ? 'road' : state.setupActionRequired,
     gameLog: [
-      `Player ${playerId + 1} built a settlement.`,
+      `${nameOf(state, playerId)} built a settlement.`,
       ...(harbourLog ? [harbourLog] : []),
       ...evaluation.logs,
       ...state.gameLog

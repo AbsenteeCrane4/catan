@@ -1,5 +1,6 @@
 import { CommandHandler } from "./types";
 import { executeSteal } from "@/lib/game/helpers/robber";
+import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const moveRobber: CommandHandler<'MOVE_ROBBER'> = (state, action) => {
   const { hexId, playerId } = action.payload;
@@ -29,14 +30,14 @@ export const moveRobber: CommandHandler<'MOVE_ROBBER'> = (state, action) => {
   if (validVictims.length === 0) {
     // Nobody to steal from
     newState.pendingRobberAction = null;
-    newState.gameLog = [`Player ${playerId + 1} moved the robber, but nobody was there to rob.`, ...state.gameLog];
+    newState.gameLog = [`${nameOf(state, playerId)} moved the robber, but nobody was there to rob.`, ...state.gameLog];
   } else if (validVictims.length === 1) {
     // Only one option: Auto-steal (DRY)
     newState = executeSteal(newState, playerId, validVictims[0]);
   } else {
     // Multiple options: Pause and ask the player
     newState.pendingRobberAction = { status: 'stealing', validVictims };
-    newState.gameLog = [`Player ${playerId + 1} moved the robber. Waiting for victim selection...`, ...state.gameLog];
+    newState.gameLog = [`${nameOf(state, playerId)} moved the robber. Waiting for victim selection...`, ...state.gameLog];
   }
 
   return newState;

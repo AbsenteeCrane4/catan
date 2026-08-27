@@ -1,5 +1,6 @@
 import { ResourceType } from "@/types/catan";
 import { CommandHandler } from "./types";
+import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const acceptTrade: CommandHandler<'ACCEPT_TRADE'> = (state, action) => {
   const { acceptorId } = action.payload;
@@ -13,7 +14,7 @@ export const acceptTrade: CommandHandler<'ACCEPT_TRADE'> = (state, action) => {
   // Validate acceptor has the requested resources
   for (const [res, amount] of Object.entries(tradeOffer.request)) {
     if (acceptor.resources[res as ResourceType] < amount) {
-      return { ...state, gameLog: [`Player ${acceptorId + 1} doesn't have enough ${res} to accept!`, ...state.gameLog] };
+      return { ...state, gameLog: [`${nameOf(state, acceptorId)} doesn't have enough ${res} to accept!`, ...state.gameLog] };
     }
   }
 
@@ -40,6 +41,6 @@ export const acceptTrade: CommandHandler<'ACCEPT_TRADE'> = (state, action) => {
     ...state,
     players: updatedPlayers,
     currentTradeOffer: null,
-    gameLog: [`Player ${acceptorId + 1} accepted the trade with Player ${tradeOffer.initiatorId + 1}.`, ...state.gameLog]
+    gameLog: [`${nameOf(state, acceptorId)} accepted the trade with ${nameOf(state, tradeOffer.initiatorId)}.`, ...state.gameLog]
   };
 };

@@ -1,5 +1,6 @@
 import { CommandHandler } from "./types";
 import { requireMainPhase } from "@/lib/game/helpers/guards";
+import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const endTurn: CommandHandler<'END_TURN'> = (state) => {
   const phaseRejection = requireMainPhase(state, "Cannot end turn manually during setup!");
@@ -27,6 +28,6 @@ export const endTurn: CommandHandler<'END_TURN'> = (state) => {
     currentPlayerIndex: nextPlayer,
     diceRoll: null,
     hasPlayedDevCardThisTurn: false,
-    gameLog: [`--- Player ${nextPlayer + 1}'s Turn ---`, ...state.gameLog]
+    gameLog: [`--- ${nameOf(state, nextPlayer)}'s Turn ---`, ...state.gameLog]
   };
 };

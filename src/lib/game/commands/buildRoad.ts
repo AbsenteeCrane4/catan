@@ -2,6 +2,7 @@ import { CommandHandler } from "./types";
 import { requireCurrentPlayer } from "@/lib/game/helpers/guards";
 import { isValidRoadPlacement } from "@/lib/game/helpers/board";
 import { evaluateLongestRoad } from "@/lib/game/helpers/longestRoad";
+import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const buildRoad: CommandHandler<'BUILD_ROAD'> = (state, action) => {
   const { nodeId1, nodeId2, playerId } = action.payload;
@@ -71,7 +72,7 @@ export const buildRoad: CommandHandler<'BUILD_ROAD'> = (state, action) => {
     players: evaluation.players,
     longestRoad: evaluation.longestRoad,
     gameLog: [
-      `Player ${playerId + 1} built a road.`,
+      `${nameOf(state, playerId)} built a road.`,
       ...evaluation.logs,
       ...state.gameLog
     ]

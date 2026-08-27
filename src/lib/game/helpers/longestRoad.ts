@@ -1,4 +1,5 @@
 import { GameState, Road, Settlement } from "@/types/catan";
+import { playerName } from "./playerName";
 
 function getLongestRoadForPlayer(playerId: number, roads: Road[], settlements: Record<string, Settlement>) {
   const playerRoads = roads.filter(r => r.playerId === playerId);
@@ -102,17 +103,17 @@ export function evaluateLongestRoad(state: GameState, affectedPlayerIds: number[
         ...updatedPlayers[currentHolderId],
         victoryPoints: updatedPlayers[currentHolderId].victoryPoints - 2
       };
-      logs.push(`Player ${currentHolderId + 1} lost the Longest Road.`);
+      logs.push(`${playerName(updatedPlayers[currentHolderId], currentHolderId)} lost the Longest Road.`);
     }
     if (newHolderId !== null) {
       updatedPlayers[newHolderId] = {
         ...updatedPlayers[newHolderId],
         victoryPoints: updatedPlayers[newHolderId].victoryPoints + 2
       };
-      logs.push(`Player ${newHolderId + 1} claimed the Longest Road with a length of ${maxLength}! (+2 VP)`);
+      logs.push(`${playerName(updatedPlayers[newHolderId], newHolderId)} claimed the Longest Road with a length of ${maxLength}! (+2 VP)`);
     }
   } else if (newHolderId !== null && maxLength > currentRecordLength) {
-    logs.push(`Player ${newHolderId + 1} extended the Longest Road to ${maxLength}!`);
+    logs.push(`${playerName(updatedPlayers[newHolderId], newHolderId)} extended the Longest Road to ${maxLength}!`);
   }
 
   return {

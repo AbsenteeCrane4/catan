@@ -1,6 +1,5 @@
 import { CommandRegistry } from "./types";
 import { syncState } from "./syncState";
-import { setRadius } from "./setRadius";
 import { upgradeSettlement } from "./upgradeSettlement";
 import { rollDice } from "./rollDice";
 import { moveRobber } from "./moveRobber";
@@ -17,7 +16,6 @@ import { playDevCard } from "./playDevCard";
 
 export const commandRegistry: CommandRegistry = {
   SYNC_STATE: syncState,
-  SET_RADIUS: setRadius,
   UPGRADE_SETTLEMENT: upgradeSettlement,
   ROLL_DICE: rollDice,
   MOVE_ROBBER: moveRobber,

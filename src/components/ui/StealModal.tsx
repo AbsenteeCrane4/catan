@@ -1,5 +1,6 @@
 import { Player } from "@/types/catan";
 import { Users } from "lucide-react";
+import { playerName } from "@/lib/game/helpers/playerName";
 
 interface StealModalProps {
   victims: number[];
@@ -26,7 +27,7 @@ export function StealModal({ victims, players, onSelect }: StealModalProps) {
                 className="flex items-center justify-between p-4 rounded-lg bg-slate-900 border border-slate-700 hover:bg-slate-700 hover:border-slate-500 transition-all group"
               >
                 <span className="font-bold flex items-center gap-2" style={{ color: p.color }}>
-                  <Users size={18} /> Player {victimId + 1}
+                  <Users size={18} /> {playerName(p, victimId)}
                 </span>
                 <span className="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300 group-hover:text-white">
                   Steal

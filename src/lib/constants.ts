@@ -19,6 +19,39 @@ export const RESOURCE_TYPES: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat'
 
 export const PLAYER_COLORS: PlayerColor[] = ['red', 'blue', 'white', 'orange', 'green', 'brown', 'purple'];
 
+/**
+ * Tailwind background classes per player colour.
+ * These MUST stay complete literal strings — Tailwind v4 cannot see `bg-${color}-700`.
+ */
+export const PLAYER_COLOR_CLASSES: Record<PlayerColor, string> = {
+  red: 'bg-red-700',
+  blue: 'bg-blue-700',
+  white: 'bg-slate-200',
+  orange: 'bg-amber-500',
+  green: 'bg-emerald-600',
+  brown: 'bg-amber-900',
+  purple: 'bg-purple-700',
+};
+
+export const PLAYER_COLOR_LABELS: Record<PlayerColor, string> = {
+  red: 'Red',
+  blue: 'Blue',
+  white: 'White',
+  orange: 'Orange',
+  green: 'Green',
+  brown: 'Brown',
+  purple: 'Purple',
+};
+
+/**
+ * Seats used when no player configuration is supplied.
+ * The `Player N` names are load-bearing: several existing tests assert on log strings
+ * such as "Player 1 claimed the Longest Road". Do not reword them.
+ */
+export const DEFAULT_SEATS: { name: string; color: PlayerColor }[] = PLAYER_COLORS
+  .slice(0, 4)
+  .map((color, i) => ({ name: `Player ${i + 1}`, color }));
+
 export const BASE_GAME_RESOURCES: HexResource[] = [
   'wood', 'wood', 'wood', 'wood',
   'sheep', 'sheep', 'sheep', 'sheep',

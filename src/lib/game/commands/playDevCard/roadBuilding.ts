@@ -2,6 +2,7 @@ import { DevCardHandler } from "./types";
 import { isValidRoadPlacement } from "@/lib/game/helpers/board";
 import { evaluateLongestRoad } from "@/lib/game/helpers/longestRoad";
 import { withLog } from "@/lib/game/helpers/guards";
+import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const applyRoadBuilding: DevCardHandler<'roadBuilding'> = (draftState, originalState, playerId, args) => {
   if (!args?.road1 || !args?.road2) {
@@ -38,7 +39,7 @@ export const applyRoadBuilding: DevCardHandler<'roadBuilding'> = (draftState, or
     players: evaluation.players,
     longestRoad: evaluation.longestRoad,
     gameLog: [
-      `Player ${playerId + 1} played Road Building and placed 2 free roads.`,
+      `${nameOf(stateWithBothRoads, playerId)} played Road Building and placed 2 free roads.`,
       ...evaluation.logs,
       ...stateWithBothRoads.gameLog
     ]

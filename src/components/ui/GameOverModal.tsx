@@ -1,5 +1,6 @@
 import { Trophy, LogOut } from 'lucide-react';
 import { Player } from '@/types/catan';
+import { playerName } from '@/lib/game/helpers/playerName';
 
 interface GameOverModalProps {
   winnerId: number;
@@ -25,7 +26,7 @@ export function GameOverModal({ winnerId, players, onLeaveRoom }: GameOverModalP
             Game Over
           </h1>
           <p className="text-lg text-slate-300">
-            Player {winnerId + 1} has won the game with{' '}
+            {playerName(winner)} has won the game with{' '}
             <span className="font-bold text-amber-400">{winner.victoryPoints} VP</span>!
           </p>
         </div>

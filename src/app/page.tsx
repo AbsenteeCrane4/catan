@@ -2,20 +2,19 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { createGameId, isValidGameId } from '@/lib/game-id';
 
 export default function LobbyPage() {
   const router = useRouter();
   const [gameId, setGameId] = useState('');
 
   const createNewGame = () => {
-    // Generate a random ID or use a timestamp
-    const newId = Math.random().toString(36).substring(7);
-    router.push(`/game/${newId}`);
+    router.push(`/game/${createGameId()}`);
   };
 
   const joinGame = (e: React.FormEvent) => {
     e.preventDefault();
-    if (gameId) router.push(`/game/${gameId}`);
+    if (isValidGameId(gameId)) router.push(`/game/${gameId.trim().toUpperCase()}`);
   };
 
   return (
@@ -49,7 +48,8 @@ export default function LobbyPage() {
             />
             <button 
               type="submit"
-              className="bg-slate-700 hover:bg-slate-600 px-6 py-3 rounded-xl font-bold transition-colors"
+              disabled={!isValidGameId(gameId)}
+              className="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-bold transition-colors"
             >
               Join
             </button>
