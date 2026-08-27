@@ -1,4 +1,5 @@
 import { GameState, ResourceType } from "@/types/catan";
+import { nameOf } from "./playerName";
 
 export function executeSteal(state: GameState, thiefId: number, victimId: number): GameState {
   const victim = state.players[victimId];
@@ -13,7 +14,7 @@ export function executeSteal(state: GameState, thiefId: number, victimId: number
     return {
       ...state,
       pendingRobberAction: null,
-      gameLog: [`Player ${thiefId + 1} tried to steal, but Player ${victimId + 1} had no resources.`, ...state.gameLog]
+      gameLog: [`${nameOf(state, thiefId)} tried to steal, but ${nameOf(state, victimId)} had no resources.`, ...state.gameLog]
     };
   }
 
@@ -34,6 +35,6 @@ export function executeSteal(state: GameState, thiefId: number, victimId: number
     ...state,
     players: newPlayers,
     pendingRobberAction: null,
-    gameLog: [`Player ${thiefId + 1} stole a resource from Player ${victimId + 1}.`, ...state.gameLog]
+    gameLog: [`${nameOf(state, thiefId)} stole a resource from ${nameOf(state, victimId)}.`, ...state.gameLog]
   };
 }

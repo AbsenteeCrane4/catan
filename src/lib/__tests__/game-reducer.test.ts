@@ -49,7 +49,7 @@ describe('Catan Game Reducer', () => {
   ];
 
   beforeEach(() => {
-    const initialState = createInitialState(2);
+    const initialState = createInitialState();
     mockState = {
       ...initialState,
       nodes: mockNodes,
@@ -270,7 +270,7 @@ describe('Catan Game Reducer', () => {
 
   describe('Game Setup - Robber', () => {
   it('places the robber on the desert tile at start', () => {
-    const state = createInitialState(2);
+    const state = createInitialState();
     
     // Find which hex is the desert in this specific random generation
     const desertHex = state.hexes.find(h => h.resource === 'desert');

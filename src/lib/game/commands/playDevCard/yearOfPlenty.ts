@@ -1,5 +1,6 @@
 import { DevCardHandler } from "./types";
 import { withLog } from "@/lib/game/helpers/guards";
+import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const applyYearOfPlenty: DevCardHandler<'yearOfPlenty'> = (draftState, originalState, playerId, args) => {
   // Fail safely if the UI didn't send args — the card stays in hand, but say so rather than no-op silently
@@ -18,6 +19,6 @@ export const applyYearOfPlenty: DevCardHandler<'yearOfPlenty'> = (draftState, or
   return {
     ...draftState,
     players: updatedPlayers,
-    gameLog: [`Player ${playerId + 1} played Year of Plenty and took ${args.resource1} and ${args.resource2}.`, ...draftState.gameLog]
+    gameLog: [`${nameOf(draftState, playerId)} played Year of Plenty and took ${args.resource1} and ${args.resource2}.`, ...draftState.gameLog]
   };
 };

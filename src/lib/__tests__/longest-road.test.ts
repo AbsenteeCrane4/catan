@@ -18,7 +18,7 @@ describe('Longest Road Logic Evaluation', () => {
   };
 
   beforeEach(() => {
-    const initialState = GameReducer.createInitialState(2);
+    const initialState = GameReducer.createInitialState();
     
     mockState = {
       ...initialState,

@@ -7,7 +7,7 @@ describe('Development Cards', () => {
   let initialState: GameState;
 
   beforeEach(() => {
-    initialState = createInitialState(2); // 3 player game
+    initialState = createInitialState();
     initialState.phase = 'main'; // Set phase to main for dev card actions
     
     // Give Player 0 enough resources to buy a few Development Cards

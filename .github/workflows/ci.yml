@@ -40,6 +40,53 @@ jobs:
       - name: Run Vitest
         run: npm run test
 
+  e2e:
+    name: Run Cypress E2E Tests
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      # Runs against a production build and the real socket server, because the
+      # specs drive genuine socket.io traffic: extra players are bots connected
+      # from the Cypress Node process, not stubbed responses. The action caches
+      # the ~200 MB Cypress binary keyed on the version in package-lock.json.
+      - name: Build, start server and run Cypress
+        uses: cypress-io/github-action@v6
+        with:
+          build: npm run build
+          start: npm start
+          wait-on: 'http://localhost:3000'
+          wait-on-timeout: 120
+
+      - name: Upload screenshots from failed specs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # Video is enabled only when CI is set (see cypress.config.ts), so a failing
+      # run can be watched back rather than reasoned about from a stack trace.
+      - name: Upload run videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-videos
+          path: cypress/videos
+          if-no-files-found: ignore
+          retention-days: 7
+
   build:
     name: Production Build Check
     needs: test
@@ -63,7 +110,9 @@ jobs:
 
   docker-publish:
     name: Build & Push Docker Image
-    needs: build
+    # e2e runs in parallel with build (both only need test), and both must pass
+    # before anything is published — a broken lobby or board must not reach prod.
+    needs: [build, e2e]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     permissions:

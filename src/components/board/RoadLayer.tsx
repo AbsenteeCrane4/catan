@@ -1,16 +1,17 @@
-import { GameNode, Road } from "@/types/catan";
-import { PLAYER_COLORS } from "@/lib/constants";
+import { GameNode, PlayerColor, Road } from "@/types/catan";
 import { clsx } from "clsx";
 
 interface RoadLayerProps {
   nodes: GameNode[];
   roads: Record<string, Road>;
   pendingRoads?: [string, string][];
+  /** playerId -> chosen colour. Supplied by GameBoard, never derived from seat index. */
+  playerColors: Record<number, PlayerColor>;
   onBuildRoad: (n1: string, n2: string) => void;
   // In a real app, pass boolean for 'canBuild' based on turn/resources
 }
 
-export function RoadLayer({ nodes, roads, pendingRoads = [], onBuildRoad }: RoadLayerProps) {
+export function RoadLayer({ nodes, roads, pendingRoads = [], playerColors, onBuildRoad }: RoadLayerProps) {
   // Use a Set to prevent rendering connections twice (A-B vs B-A)
   const processed = new Set<string>();
   const connections: { id: string; start: GameNode; end: GameNode; existingRoad: Road; isPending: boolean; }[] = [];
@@ -43,8 +44,8 @@ export function RoadLayer({ nodes, roads, pendingRoads = [], onBuildRoad }: Road
   return (
     <g className="road-layer">
       {connections.map(({ id, start, end, existingRoad, isPending }) => (
-        <g 
-          key={id} 
+        <g
+          key={id}
           onClick={(e) => {
             e.stopPropagation();
             // Prevent clicking if a road is already built OR if it's already selected as pending
@@ -53,6 +54,10 @@ export function RoadLayer({ nodes, roads, pendingRoads = [], onBuildRoad }: Road
           className={clsx(
             (!existingRoad && !isPending) ? "cursor-pointer group" : ""
           )}
+          data-cy="edge"
+          data-node-1={start.id}
+          data-node-2={end.id}
+          data-owner-id={existingRoad ? existingRoad.playerId : undefined}
         >
           {/* 1. Invisible Hitbox (Thicker than visible road for easier clicking) */}
           <line
@@ -92,7 +97,7 @@ export function RoadLayer({ nodes, roads, pendingRoads = [], onBuildRoad }: Road
             <line
               x1={start.pixelPos.x} y1={start.pixelPos.y}
               x2={end.pixelPos.x} y2={end.pixelPos.y}
-              stroke={PLAYER_COLORS[existingRoad.playerId]}
+              stroke={playerColors[existingRoad.playerId] ?? 'white'}
               strokeWidth="8"
               strokeLinecap="round"
               className="drop-shadow-md pointer-events-none"

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { playerName } from "@/lib/game/helpers/playerName";
 import { ResourceType, TradeOffer, Player } from '@/types/catan';
 import { BookUp } from 'lucide-react';
 import { RESOURCE_COLORS } from '@/lib/constants';
@@ -11,6 +12,7 @@ interface TradeUIProps {
   localPlayerId: number;
   currentPlayerIndex: number;
   localPlayer: Player;
+  players: Player[];
   currentTradeOffer: TradeOffer | null;
   onTradeWithBank: (offerResource: ResourceType, requestResource: ResourceType) => void;
   onProposeTrade: (offer: TradeOffer) => void;
@@ -31,6 +33,7 @@ export function TradeUI({
   localPlayerId,
   currentPlayerIndex,
   localPlayer,
+  players,
   currentTradeOffer,
   onTradeWithBank,
   onProposeTrade,
@@ -98,7 +101,7 @@ export function TradeUI({
       <div className="bg-blue-900/40 p-4 rounded-xl border border-blue-500/50 shadow-2xl animate-in zoom-in-95 duration-200">
         <h3 className="text-white font-bold text-sm mb-1">Active Trade Offer</h3>
         <p className="text-blue-200 text-[10px] uppercase tracking-wider mb-4">
-          From Player {currentTradeOffer.initiatorId + 1}
+          From {playerName(players[currentTradeOffer.initiatorId], currentTradeOffer.initiatorId)}
         </p>
         
         <div className="space-y-3 mb-6">

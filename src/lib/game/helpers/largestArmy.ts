@@ -1,4 +1,5 @@
 import { GameState } from "@/types/catan";
+import { playerName } from "./playerName";
 
 export function evaluateLargestArmy(state: GameState): GameState {
   let currentHolderId: number | null = null;
@@ -40,7 +41,7 @@ export function evaluateLargestArmy(state: GameState): GameState {
         largestArmy: false,
         victoryPoints: updatedPlayers[currentHolderId].victoryPoints - 2
       };
-      logs.push(`Player ${currentHolderId + 1} lost the Largest Army.`);
+      logs.push(`${playerName(updatedPlayers[currentHolderId], currentHolderId)} lost the Largest Army.`);
     }
 
     // Award 2 VP to the winner
@@ -50,7 +51,7 @@ export function evaluateLargestArmy(state: GameState): GameState {
         largestArmy: true,
         victoryPoints: updatedPlayers[newHolderId].victoryPoints + 2
       };
-      logs.push(`Player ${newHolderId + 1} claimed the Largest Army! (+2 VP)`);
+      logs.push(`${playerName(updatedPlayers[newHolderId], newHolderId)} claimed the Largest Army! (+2 VP)`);
     }
 
     return {

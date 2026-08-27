@@ -1,4 +1,5 @@
 import { GameState } from "@/types/catan";
+import { playerName } from "./playerName";
 
 export function evaluateWinCondition(state: GameState): GameState {
   if (state.isGameOver) return state;
@@ -10,7 +11,7 @@ export function evaluateWinCondition(state: GameState): GameState {
       isGameOver: true,
       winnerId: winner.id,
       gameLog: [
-        `🏆 Game Over! Player ${winner.id + 1} wins with ${winner.victoryPoints} Victory Points!`,
+        `🏆 Game Over! ${playerName(winner)} wins with ${winner.victoryPoints} Victory Points!`,
         ...state.gameLog
       ]
     };

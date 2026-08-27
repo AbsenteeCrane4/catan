@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { GameState } from '@/types/catan';
+import { useMemo, useState } from 'react';
+import { GameState, PlayerColor } from '@/types/catan';
 import { HexTile } from './HexTile';
 import { SettlementNode } from './SettlementNode';
 import { RoadLayer } from './RoadLayer';
-import { HEX_HEIGHT, HEX_SIZE } from '@/lib/constants';
+import { HEX_SIZE } from '@/lib/constants';
 import { Robber } from '@/components/ui/Robber';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { HarbourLayer } from './HarbourLayer';
@@ -19,19 +19,33 @@ interface GameBoardProps {
 }
 
 export function GameBoard({ 
-  state: { hexes, nodes, settlements, roads, harbours, boardRadius: radius, robberHexId },
+  state: { hexes, nodes, settlements, roads, harbours, robberHexId, players },
   pendingRoads = [],
   isMovingRobber,
   onHexClick,
   onBuildSettlement,
-  onBuildRoad, 
-  onUpgradeSettlement 
+  onBuildRoad,
+  onUpgradeSettlement
 }: GameBoardProps) {
-  
+
   const [pendingUpgradeNode, setPendingUpgradeNode] = useState<string | null>(null);
-  
-  const viewBoxSize = (radius * 2 + 1) * HEX_HEIGHT * 1.3;
-  const origin = -viewBoxSize / 2;
+
+  // Colour by the player's chosen colour, never by seat index.
+  const playerColors = useMemo(
+    () => Object.fromEntries(players.map(p => [p.id, p.color])) as Record<number, PlayerColor>,
+    [players]
+  );
+
+  // Derived from actual geometry so any board shape (including the asymmetric 5-6 player
+  // expansion board) is framed correctly. Padding leaves room for the harbour docks.
+  const view = useMemo(() => {
+    const pad = HEX_SIZE * 1.6;
+    const xs = nodes.map(n => n.pixelPos.x);
+    const ys = nodes.map(n => n.pixelPos.y);
+    const minX = Math.min(...xs) - pad;
+    const minY = Math.min(...ys) - pad;
+    return { minX, minY, w: Math.max(...xs) + pad - minX, h: Math.max(...ys) + pad - minY };
+  }, [nodes]);
 
   const robberHex = hexes.find(h => h.id === robberHexId);
 
@@ -48,9 +62,11 @@ export function GameBoard({
     <div className="flex-1 bg-slate-900 relative overflow-hidden flex items-center justify-center">
       <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:24px_24px]" />
       
-      <svg 
-        viewBox={`${origin} ${origin} ${viewBoxSize} ${viewBoxSize}`}
+      <svg
+        viewBox={`${view.minX} ${view.minY} ${view.w} ${view.h}`}
+        preserveAspectRatio="xMidYMid meet"
         className="w-full h-full max-h-[85vh] drop-shadow-2xl"
+        data-cy="game-board"
       >
         <g id="hex-layer">
           {hexes.map(hex => (
@@ -67,14 +83,15 @@ export function GameBoard({
 
         {robberPos && <Robber x={robberPos.x} y={robberPos.y} />}
         
-        <RoadLayer nodes={nodes} roads={roads} pendingRoads={pendingRoads} onBuildRoad={onBuildRoad} />
+        <RoadLayer nodes={nodes} roads={roads} pendingRoads={pendingRoads} playerColors={playerColors} onBuildRoad={onBuildRoad} />
         
         <g id="node-layer">
           {nodes.map(node => (
             <SettlementNode 
               key={node.id} 
-              node={node} 
-              owner={settlements[node.id]} 
+              node={node}
+              owner={settlements[node.id]}
+              ownerColor={settlements[node.id] ? playerColors[settlements[node.id].playerId] : undefined}
               onBuild={() => onBuildSettlement(node.id)}
               onUpgrade={() => setPendingUpgradeNode(node.id)} 
             />

@@ -1,5 +1,6 @@
 import { CommandHandler } from "./types";
 import { requireMainPhase, requireCurrentPlayer } from "@/lib/game/helpers/guards";
+import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const tradeWithBank: CommandHandler<'TRADE_WITH_BANK'> = (state, action) => {
   const { playerId, offerResource, requestResource } = action.payload;
@@ -27,7 +28,7 @@ export const tradeWithBank: CommandHandler<'TRADE_WITH_BANK'> = (state, action) 
   });
 
   if (player.resources[offerResource] < cost) {
-    return { ...state, gameLog: [`Player ${playerId + 1} doesn't have enough ${offerResource}!`, ...state.gameLog] };
+    return { ...state, gameLog: [`${nameOf(state, playerId)} doesn't have enough ${offerResource}!`, ...state.gameLog] };
   }
 
   const updatedPlayers = [...state.players];
@@ -43,6 +44,6 @@ export const tradeWithBank: CommandHandler<'TRADE_WITH_BANK'> = (state, action) 
   return {
     ...state,
     players: updatedPlayers,
-    gameLog: [`Player ${playerId + 1} traded 1 ${offerResource} for 1 ${requestResource}.`, ...state.gameLog]
+    gameLog: [`${nameOf(state, playerId)} traded 1 ${offerResource} for 1 ${requestResource}.`, ...state.gameLog]
   };
 };

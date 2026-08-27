@@ -4,7 +4,7 @@ import { GameState } from '@/types/catan';
 
 describe('Game Setup & Harbours', () => {
   it('generates the correct number of ports for the board', () => {
-    const state = createInitialState(2);
+    const state = createInitialState();
     // Standard radius 2 board has 9 ports
     expect(state.harbours).toHaveLength(9);
     // Ensure no two ports share the same node
@@ -18,7 +18,7 @@ describe('Catan Trading Logic', () => {
   let initialState: GameState;
 
   beforeEach(() => {
-    initialState = createInitialState(2); // 3 player game
+    initialState = createInitialState();
     // Give Player 1 some starting resources
     initialState.players[0].resources = { wood: 10, brick: 0, wheat: 0, sheep: 0, ore: 0 };
     // Give Player 2 some starting resources

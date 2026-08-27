@@ -1,5 +1,6 @@
 import { CommandHandler } from "./types";
 import { requireMainPhase, requireCurrentPlayer } from "@/lib/game/helpers/guards";
+import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const upgradeSettlement: CommandHandler<'UPGRADE_SETTLEMENT'> = (state, action) => {
   const { nodeId, playerId } = action.payload;
@@ -41,6 +42,6 @@ export const upgradeSettlement: CommandHandler<'UPGRADE_SETTLEMENT'> = (state, a
       ...state.settlements,
       [nodeId]: { ...settlement, isCity: true }
     },
-    gameLog: [`Player ${playerId + 1} upgraded a settlement to a City!`, ...state.gameLog]
+    gameLog: [`${nameOf(state, playerId)} upgraded a settlement to a City!`, ...state.gameLog]
   };
 };

@@ -11,6 +11,9 @@ export type KnightArgs = { robberHexId: string; robberTargetPlayerId?: number | 
 export type RoadBuildingArgs = { road1: [string, string]; road2: [string, string] };
 export type AnyCardArgs = YearOfPlentyArgs | MonopolyArgs | KnightArgs | RoadBuildingArgs;
 
+/** Which physical Catan set the board is built from. 5-6 players use the official extension. */
+export type BoardKind = 'base' | 'expansion';
+
 export interface Hex {
   q: number;
   r: number;
@@ -21,7 +24,9 @@ export interface Hex {
 }
 
 export interface Player {
+  /** INVARIANT: id === index in GameState.players. The reducer indexes players[playerId] throughout. */
   id: number;
+  name: string;
   color: PlayerColor;
   resources: Record<ResourceType, number>;
   longestRoadLength: number;
@@ -33,7 +38,7 @@ export interface Player {
 }
 
 export interface GameState {
-  boardRadius: number;
+  boardKind: BoardKind;
   hexes: Hex[];
   robberHexId: string;
   pendingRobberAction: { status: 'moving' | 'stealing'; validVictims?: number[] } | null;
@@ -105,7 +110,6 @@ export type GameAction =
   | { type: 'ROLL_DICE' }
   | { type: 'MOVE_ROBBER'; payload: {hexId: string, playerId: number} }
   | { type: 'STEAL_RESOURCE'; payload: {thiefId: number, victimId: number} }
-  | { type: 'SET_RADIUS'; payload: number }
   | { type: 'TRADE_WITH_BANK'; payload: { playerId: number; offerResource: ResourceType; requestResource: ResourceType } }
   | { type: 'PROPOSE_TRADE'; payload: { offer: TradeOffer } }
   | { type: 'ACCEPT_TRADE'; payload: { acceptorId: number } }

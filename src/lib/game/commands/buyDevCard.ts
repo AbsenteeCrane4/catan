@@ -1,5 +1,6 @@
 import { CommandHandler } from "./types";
 import { requireMainPhase, requireCurrentPlayer } from "@/lib/game/helpers/guards";
+import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const buyDevCard: CommandHandler<'BUY_DEV_CARD'> = (state, action) => {
   const { playerId } = action.payload;
@@ -43,6 +44,6 @@ export const buyDevCard: CommandHandler<'BUY_DEV_CARD'> = (state, action) => {
     ...state,
     devCardDeck: newDeck,
     players: updatedPlayers,
-    gameLog: [`Player ${playerId + 1} bought a Development Card.`, ...state.gameLog]
+    gameLog: [`${nameOf(state, playerId)} bought a Development Card.`, ...state.gameLog]
   };
 };

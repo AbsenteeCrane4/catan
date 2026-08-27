@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { playerName } from "@/lib/game/helpers/playerName";
 import { Player, ResourceType, DevelopmentCardType, AnyCardArgs } from "@/types/catan";
 import { RESOURCE_COLORS } from "@/lib/constants";
 import { Users, Dice5, ChevronRight, Layers, Lock, Play, Shield } from "lucide-react";
@@ -77,12 +78,12 @@ export function PlayerSidebar({
 
   return (
   <>
-    <aside className="w-72 bg-slate-800/90 backdrop-blur border-r border-slate-700 p-4 flex flex-col gap-4 overflow-y-auto">
+    <aside className="w-72 bg-slate-800/90 backdrop-blur border-r border-slate-700 p-4 flex flex-col gap-4 min-h-0">
       
       {/* --- TURN CONTROLS SECTION --- */}
-      <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-4 mb-2">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-          {isMyTurn ? "Your Turn" : `Player ${currentPlayerIndex + 1}'s Turn`}
+      <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-4 mb-2 shrink-0">
+        <h3 data-cy="turn-indicator" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+          {isMyTurn ? "Your Turn" : `${playerName(players[currentPlayerIndex], currentPlayerIndex)}'s Turn`}
         </h3>
         
         {/* The Dice Animation moved here */}
@@ -98,17 +99,19 @@ export function PlayerSidebar({
 
         <div className="w-full space-y-2">
           {!diceRoll ? (
-            <button 
+            <button
               disabled={!isMyTurn}
               onClick={onRoll}
+              data-cy="roll-dice-btn"
               className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-20 disabled:grayscale py-3 rounded-lg font-bold text-slate-900 transition-all flex items-center justify-center gap-2"
             >
               Roll Dice
             </button>
           ) : (
-            <button 
+            <button
               disabled={!isMyTurn}
               onClick={onEndTurn}
+              data-cy="end-turn-btn"
               className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-20 py-3 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2"
             >
               End Turn <ChevronRight size={18} />
@@ -120,14 +123,17 @@ export function PlayerSidebar({
       <div className="h-[1px] bg-slate-700 w-full my-2" />
 
       {/* --- PLAYERS LIST --- */}
-      <div className="space-y-3">
+      <div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
         {players.map((p, idx) => {
           const isMe = idx === myPlayerIndex;
           const totalHiddenCards = (p.devCards?.playable?.length || 0) + (p.devCards?.boughtThisTurn?.length || 0);
 
           return (
-            <div 
+            <div
               key={p.id}
+              data-cy="sidebar-player"
+              data-player-id={p.id}
+              data-player-color={p.color}
               className={clsx(
                 "p-3 rounded-lg border-2 transition-all duration-300 relative",
                 isMe 
@@ -141,7 +147,7 @@ export function PlayerSidebar({
 
               <div className="flex justify-between items-center mb-2">
                 <span className="font-bold text-sm flex items-center gap-1" style={{ color: p.color }}>
-                  <Users size={14} /> Player {idx + 1}
+                  <Users size={14} /> {playerName(p, idx)}
                 </span>
                 <div className="flex gap-1 items-center">
                   {/* Opponent Dev Card Count */}
@@ -207,15 +213,15 @@ export function PlayerSidebar({
       </div>
 
       {/* --- ACHIEVEMENTS BANNERS --- */}
-      <div className="flex flex-col gap-2 mt-4">
+      <div className="flex flex-col gap-2 mt-4 shrink-0">
         {longestRoad.playerId !== null && (
           <div className="bg-orange-600/20 border border-orange-500 text-orange-400 p-2 rounded text-xs font-bold text-center">
-            👑 Player {longestRoad.playerId + 1} holds the Longest Road ({longestRoad.length})
+            👑 {playerName(players[longestRoad.playerId], longestRoad.playerId)} holds the Longest Road ({longestRoad.length})
           </div>
         )}
         {largestArmyHolder && (
           <div className="bg-red-600/20 border border-red-500 text-red-400 p-2 rounded text-xs font-bold text-center">
-            ⚔️ Player {largestArmyHolder.id + 1} holds the Largest Army ({largestArmyHolder.knightsPlayed})
+            ⚔️ {playerName(largestArmyHolder)} holds the Largest Army ({largestArmyHolder.knightsPlayed})
           </div>
         )}
       </div>

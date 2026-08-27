@@ -2,20 +2,19 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { createGameId, isValidGameId } from '@/lib/game-id';
 
 export default function LobbyPage() {
   const router = useRouter();
   const [gameId, setGameId] = useState('');
 
   const createNewGame = () => {
-    // Generate a random ID or use a timestamp
-    const newId = Math.random().toString(36).substring(7);
-    router.push(`/game/${newId}`);
+    router.push(`/game/${createGameId()}`);
   };
 
   const joinGame = (e: React.FormEvent) => {
     e.preventDefault();
-    if (gameId) router.push(`/game/${gameId}`);
+    if (isValidGameId(gameId)) router.push(`/game/${gameId.trim().toUpperCase()}`);
   };
 
   return (
@@ -26,8 +25,9 @@ export default function LobbyPage() {
         </h1>
         
         <div className="bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700 space-y-6">
-          <button 
+          <button
             onClick={createNewGame}
+            data-cy="create-game-btn"
             className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold text-xl transition-all active:scale-95"
           >
             Create New Game
@@ -40,16 +40,19 @@ export default function LobbyPage() {
           </div>
 
           <form onSubmit={joinGame} className="flex gap-2">
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Enter Game ID"
+              data-cy="join-game-input"
               className="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 flex-1 focus:ring-2 focus:ring-blue-500 outline-none"
               value={gameId}
               onChange={(e) => setGameId(e.target.value)}
             />
-            <button 
+            <button
               type="submit"
-              className="bg-slate-700 hover:bg-slate-600 px-6 py-3 rounded-xl font-bold transition-colors"
+              disabled={!isValidGameId(gameId)}
+              data-cy="join-game-btn"
+              className="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-bold transition-colors"
             >
               Join
             </button>
