@@ -6,7 +6,7 @@ describe('Largest Army Logic Evaluation', () => {
   let mockState: GameState;
 
   beforeEach(() => {
-    const initialState = GameReducer.createInitialState(2); 
+    const initialState = GameReducer.createInitialState(); 
     
     mockState = {
       ...initialState,

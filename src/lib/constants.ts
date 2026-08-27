@@ -1,4 +1,4 @@
-import { ResourceType, PlayerColor, HexResource, PortResource } from "@/types/catan";
+import { ResourceType, PlayerColor, HexResource, PortResource, DevelopmentCardType } from "@/types/catan";
 
 export const HEX_SIZE = 50;
 export const HEX_WIDTH = Math.sqrt(3) * HEX_SIZE;
@@ -63,3 +63,50 @@ export const BASE_GAME_RESOURCES: HexResource[] = [
 
 export const BASE_GAME_TOKENS = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12];
 export const BASE_PORTS: PortResource[] = ['3:1', '3:1', '3:1', '3:1', 'wood', 'brick', 'wheat', 'sheep', 'ore'];
+
+/** How many of each development card a deck holds. */
+export type DevCardCounts = Record<DevelopmentCardType, number>;
+
+export const BASE_DEV_CARDS: DevCardCounts = {
+  knight: 14,
+  victoryPoint: 5,
+  roadBuilding: 2,
+  yearOfPlenty: 2,
+  monopoly: 2,
+};
+
+/**
+ * Pools for the official Catan 5-6 player extension.
+ * 30 hexes, of which 2 are deserts, leaving 28 numbered hexes.
+ */
+export const EXPANSION_RESOURCES: HexResource[] = [
+  'wood', 'wood', 'wood', 'wood', 'wood', 'wood',
+  'sheep', 'sheep', 'sheep', 'sheep', 'sheep', 'sheep',
+  'wheat', 'wheat', 'wheat', 'wheat', 'wheat', 'wheat',
+  'brick', 'brick', 'brick', 'brick', 'brick',
+  'ore', 'ore', 'ore', 'ore', 'ore',
+  'desert', 'desert'
+];
+
+export const EXPANSION_TOKENS = [
+  2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6,
+  8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12
+];
+
+/**
+ * 11 harbours: 5 generic plus 6 resource-specific.
+ * The extension adds a SECOND wool harbour, which is why there are six specific ports
+ * but only five resource types — the duplicate sheep entry is correct, not a typo.
+ */
+export const EXPANSION_PORTS: PortResource[] = [
+  '3:1', '3:1', '3:1', '3:1', '3:1',
+  'wood', 'brick', 'wheat', 'ore', 'sheep', 'sheep'
+];
+
+export const EXPANSION_DEV_CARDS: DevCardCounts = {
+  knight: 20,
+  victoryPoint: 6,
+  roadBuilding: 3,
+  yearOfPlenty: 3,
+  monopoly: 2,
+};

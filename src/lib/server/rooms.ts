@@ -226,10 +226,22 @@ export class RoomStore {
     // players[] array index, and the reducer indexes players[playerId] throughout.
     this.compact(room);
     room.boardKind = boardKindForPlayerCount(room.seats.length);
-    room.game = createInitialState({
-      players: room.seats.map(s => ({ name: s.name, color: s.color })),
-      boardKind: room.boardKind,
-    });
+
+    // Board generation asserts its own post-conditions (pool sizes, harbour placement).
+    // Let those surface as a lobby error rather than an unhandled throw inside a socket
+    // event handler, which would take the whole server down with it.
+    let game: GameState;
+    try {
+      game = createInitialState({
+        players: room.seats.map(s => ({ name: s.name, color: s.color })),
+        boardKind: room.boardKind,
+      });
+    } catch (error) {
+      console.error(`Failed to generate a ${room.boardKind} board for ${gameId}:`, error);
+      return fail('BOARD_GENERATION_FAILED', 'Could not create a board for that many players.');
+    }
+
+    room.game = game;
     room.status = 'playing';
     room.lastActivityAt = Date.now();
 

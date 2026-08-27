@@ -62,7 +62,8 @@ export type LobbyErrorCode =
   | 'NOT_ENOUGH_PLAYERS'
   | 'ALREADY_STARTED'
   | 'NOT_SEATED'
-  | 'NOT_YOUR_TURN';
+  | 'NOT_YOUR_TURN'
+  | 'BOARD_GENERATION_FAILED';
 
 export type Ack<T = object> =
   | ({ ok: true } & T)
