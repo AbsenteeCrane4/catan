@@ -95,12 +95,20 @@ export function evaluateLongestRoad(state: GameState, affectedPlayerIds: number[
   }
 
   if (newHolderId !== currentHolderId) {
+    // Clone before adjusting VP: only the affected players were cloned above, so the outgoing/incoming
+    // holder is often still the same object reference held by the caller's state.
     if (currentHolderId !== null) {
-      updatedPlayers[currentHolderId].victoryPoints -= 2;
+      updatedPlayers[currentHolderId] = {
+        ...updatedPlayers[currentHolderId],
+        victoryPoints: updatedPlayers[currentHolderId].victoryPoints - 2
+      };
       logs.push(`Player ${currentHolderId + 1} lost the Longest Road.`);
     }
     if (newHolderId !== null) {
-      updatedPlayers[newHolderId].victoryPoints += 2;
+      updatedPlayers[newHolderId] = {
+        ...updatedPlayers[newHolderId],
+        victoryPoints: updatedPlayers[newHolderId].victoryPoints + 2
+      };
       logs.push(`Player ${newHolderId + 1} claimed the Longest Road with a length of ${maxLength}! (+2 VP)`);
     }
   } else if (newHolderId !== null && maxLength > currentRecordLength) {

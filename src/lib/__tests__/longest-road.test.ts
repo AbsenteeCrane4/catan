@@ -74,6 +74,25 @@ describe('Longest Road Logic Evaluation', () => {
     expect(result.logs).toContain('Player 1 lost the Longest Road.');
   });
 
+  it('should not mutate the victory points of the outgoing holder in the input state', () => {
+    // Player 1 holds the card; player 0 is the one whose road just changed, so player 1 is NOT in
+    // affectedPlayerIds and therefore never gets cloned during evaluation.
+    mockState.longestRoad = { playerId: 1, length: 5 };
+    mockState.players[1].longestRoadLength = 5;
+    mockState.players[1].victoryPoints = 6;
+    mockState.roads = { ...buildMockRoads(1, 5, 'p1'), ...buildMockRoads(0, 7, 'p0') };
+
+    const outgoingHolderBefore = mockState.players[1].victoryPoints;
+
+    const result = GameReducer.evaluateLongestRoad(mockState, [0]);
+
+    // Player 0 takes the card, player 1 loses it
+    expect(result.longestRoad.playerId).toBe(0);
+    expect(result.players[1].victoryPoints).toBe(outgoingHolderBefore - 2);
+    // ...but the state that was passed in must be untouched
+    expect(mockState.players[1].victoryPoints).toBe(outgoingHolderBefore);
+  });
+
   it('should transfer card when another player strictly surpasses current holder', () => {
     mockState.longestRoad = { playerId: 0, length: 5 };
     mockState.players[0].longestRoadLength = 5;

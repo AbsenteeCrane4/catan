@@ -1,7 +1,11 @@
 import { DevCardHandler } from "./types";
+import { withLog } from "@/lib/game/helpers/guards";
 
 export const applyMonopoly: DevCardHandler<'monopoly'> = (draftState, originalState, playerId, args) => {
-  if (!args?.monopolyResource) return originalState;
+  // Fail safely if the UI didn't send args — the card stays in hand, but say so rather than no-op silently
+  if (!args?.monopolyResource) {
+    return withLog(originalState, "Monopoly needs a resource selected.");
+  }
   const resource = args.monopolyResource;
 
   let stolenAmount = 0;

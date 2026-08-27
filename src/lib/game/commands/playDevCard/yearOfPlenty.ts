@@ -1,7 +1,11 @@
 import { DevCardHandler } from "./types";
+import { withLog } from "@/lib/game/helpers/guards";
 
 export const applyYearOfPlenty: DevCardHandler<'yearOfPlenty'> = (draftState, originalState, playerId, args) => {
-  if (!args?.resource1 || !args?.resource2) return originalState; // Fail safely if UI didn't send args
+  // Fail safely if the UI didn't send args — the card stays in hand, but say so rather than no-op silently
+  if (!args?.resource1 || !args?.resource2) {
+    return withLog(originalState, "Year of Plenty needs two resources selected.");
+  }
 
   const player = draftState.players[playerId];
   const resources = { ...player.resources }; // fresh object — never mutate a resources object shared with prior state

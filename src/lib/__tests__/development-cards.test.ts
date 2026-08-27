@@ -200,6 +200,85 @@ describe('Development Cards', () => {
       expect(preActionResources).toEqual(preActionResourcesSnapshot);
       expect(newState.players[0].resources.wheat).toBe(preActionResourcesSnapshot.wheat + 3);
     });
+
+    describe('Road Building', () => {
+      beforeEach(() => {
+        initialState.players[0].devCards.playable = ['roadBuilding'];
+        // Give player 0 a settlement to anchor road placements to
+        initialState.settlements['n0'] = { nodeId: 'n0', playerId: 0, isCity: false };
+      });
+
+      it('should not leave the first road behind when the second placement is invalid', () => {
+        const roadsBefore = Object.keys(initialState.roads).length;
+
+        const newState = catanReducer(initialState, {
+          type: 'PLAY_DEV_CARD',
+          payload: {
+            playerId: 0,
+            cardType: 'roadBuilding',
+            // road1 connects to the settlement (valid); road2 is stranded (invalid)
+            cardArgs: { road1: ['n0', 'n1'], road2: ['far-a', 'far-b'] }
+          }
+        });
+
+        // The returned state must not contain the free first road...
+        expect(Object.keys(newState.roads)).toHaveLength(roadsBefore);
+        expect(newState.gameLog[0]).toContain("Invalid second road placement");
+        // ...and neither must the pre-action state that was passed in.
+        expect(Object.keys(initialState.roads)).toHaveLength(roadsBefore);
+      });
+
+      it('should place both roads when the placements are valid', () => {
+        const roadsBefore = Object.keys(initialState.roads).length;
+
+        const newState = catanReducer(initialState, {
+          type: 'PLAY_DEV_CARD',
+          payload: {
+            playerId: 0,
+            cardType: 'roadBuilding',
+            cardArgs: { road1: ['n0', 'n1'], road2: ['n1', 'n2'] }
+          }
+        });
+
+        expect(Object.keys(newState.roads)).toHaveLength(roadsBefore + 2);
+        expect(newState.players[0].devCards.played).toContain('roadBuilding');
+        // The pre-action state must be untouched
+        expect(Object.keys(initialState.roads)).toHaveLength(roadsBefore);
+      });
+
+      it('should log instead of silently doing nothing when road args are missing', () => {
+        const newState = catanReducer(initialState, {
+          type: 'PLAY_DEV_CARD',
+          payload: { playerId: 0, cardType: 'roadBuilding' }
+        });
+
+        expect(newState.gameLog[0]).toContain("Road Building needs two road placements selected.");
+        // Card is not consumed on a failed play
+        expect(newState.players[0].devCards.playable).toContain('roadBuilding');
+      });
+    });
+
+    it('should log instead of silently doing nothing when Year of Plenty args are missing', () => {
+      const newState = catanReducer(initialState, {
+        type: 'PLAY_DEV_CARD',
+        payload: { playerId: 0, cardType: 'yearOfPlenty' }
+      });
+
+      expect(newState.gameLog[0]).toContain("Year of Plenty needs two resources selected.");
+      expect(newState.players[0].devCards.playable).toContain('yearOfPlenty');
+    });
+
+    it('should log instead of silently doing nothing when Monopoly args are missing', () => {
+      initialState.players[0].devCards.playable.push('monopoly');
+
+      const newState = catanReducer(initialState, {
+        type: 'PLAY_DEV_CARD',
+        payload: { playerId: 0, cardType: 'monopoly' }
+      });
+
+      expect(newState.gameLog[0]).toContain("Monopoly needs a resource selected.");
+      expect(newState.players[0].devCards.playable).toContain('monopoly');
+    });
   });
 
   describe('Turn Transitions (END_TURN)', () => {
