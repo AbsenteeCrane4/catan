@@ -33,6 +33,62 @@ function coastalEdgeKeys(nodes: GameNode[]): Set<string> {
 const sortedTypes = (types: PortResource[]) => [...types].sort();
 const harbourKey = (h: Harbour) => [...h.nodeIds].sort().join('|');
 
+/**
+ * The coastline is a single cycle (every coastal node has exactly two coastal
+ * neighbours). Walking it gives each coastal node a position 0..N-1, so the number of
+ * free (non-harbour) nodes between two harbours can be measured exactly instead of
+ * approximated from angle.
+ */
+function coastalWalk(nodes: GameNode[]): string[] {
+  const byId = new Map(nodes.map(n => [n.id, n]));
+  const coastalAdj = new Map<string, string[]>();
+  for (const n1 of nodes) {
+    for (const neighborId of n1.neighbors) {
+      const n2 = byId.get(neighborId);
+      if (!n2) continue;
+      if (n1.hexIds.filter(id => n2.hexIds.includes(id)).length === 1) {
+        coastalAdj.set(n1.id, [...(coastalAdj.get(n1.id) ?? []), n2.id]);
+      }
+    }
+  }
+
+  const start = [...coastalAdj.keys()][0];
+  const walk = [start];
+  let prev: string | null = null;
+  let cur = start;
+  for (;;) {
+    const next = coastalAdj.get(cur)!.find(id => id !== prev)!;
+    if (next === start) break;
+    walk.push(next);
+    prev = cur;
+    cur = next;
+  }
+  return walk;
+}
+
+/** Free coastal nodes between each harbour and the next one, walking around the ring. */
+function harbourGaps(harbours: Harbour[], walk: string[]): number[] {
+  const posInWalk = new Map(walk.map((id, i) => [id, i]));
+  const total = walk.length;
+
+  const starts = harbours
+    .map(h => {
+      const [p, q] = h.nodeIds.map(id => posInWalk.get(id)!);
+      // A harbour's two nodes are walk-adjacent; whichever one is immediately followed
+      // by the other (mod the ring) is where it "starts" — required to handle the
+      // harbour that straddles the walk's arbitrary 0/N-1 seam correctly.
+      if ((p + 1) % total === q) return p;
+      if ((q + 1) % total === p) return q;
+      throw new Error(`harbour nodes are not walk-adjacent: ${p}, ${q}`);
+    })
+    .sort((a, b) => a - b);
+
+  return starts.map((idx, i) => {
+    const next = starts[(i + 1) % starts.length] + (i === starts.length - 1 ? total : 0);
+    return next - idx - 2;
+  });
+}
+
 describe.each(['base', 'expansion'] as const)('generateHarbours on the %s board', kind => {
   const expectedCount = BOARD_PRESETS[kind].ports.length;
 
@@ -80,6 +136,37 @@ describe.each(['base', 'expansion'] as const)('generateHarbours on the %s board'
       expect(byId.get(a)?.neighbors).toContain(b);
       expect(byId.get(b)?.neighbors).toContain(a);
     }
+  });
+
+  it('spaces harbours with the exact 1-or-2-node gap mix a real board has', () => {
+    const { preset, nodes } = boardFor(kind);
+    const walk = coastalWalk(nodes);
+    const total = walk.length;
+    const count = preset.ports.length;
+    const freeNodes = total - 2 * count;
+    const baseGap = Math.floor(freeNodes / count);
+    const wideGapCount = freeNodes % count;
+
+    for (let run = 0; run < 50; run++) {
+      const gaps = harbourGaps(generateHarbours(nodes, preset.ports), walk);
+      expect(gaps.filter(g => g === baseGap)).toHaveLength(count - wideGapCount);
+      expect(gaps.filter(g => g === baseGap + 1)).toHaveLength(wideGapCount);
+    }
+  });
+
+  it('varies which specific gaps are wide from game to game', () => {
+    // The mix of gap sizes is fixed by the arithmetic above, but which particular
+    // stretches of coastline get the extra node should be shuffled — otherwise every
+    // game would show the exact same layout, which reads as "there's only ever 1 node
+    // between harbours" to anyone who always looks at the same handful of ports.
+    const { preset, nodes } = boardFor(kind);
+    const walk = coastalWalk(nodes);
+    const layouts = new Set<string>();
+    for (let run = 0; run < 20; run++) {
+      const gaps = harbourGaps(generateHarbours(nodes, preset.ports), walk);
+      layouts.add(gaps.join(','));
+    }
+    expect(layouts.size).toBeGreaterThan(1);
   });
 
   it('gives every harbour a unique id and a midpoint between its two nodes', () => {

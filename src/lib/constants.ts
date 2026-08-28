@@ -15,6 +15,18 @@ export const RESOURCE_COLORS: Record<ResourceType, string> = {
 
 export const HEX_RESOURCE_COLORS: Record<HexResource, string> = {...RESOURCE_COLORS, desert: '#F4A460'}
 
+/** Illustrated hex tile art in public/images/tiles, used in place of the flat colour fill. */
+export const HEX_TILE_IMAGES: Record<HexResource, string> = {
+  wood: '/images/tiles/wood.png',
+  brick: '/images/tiles/brick.png',
+  sheep: '/images/tiles/sheep.png',
+  wheat: '/images/tiles/wheat.png',
+  ore: '/images/tiles/ore.png',
+  desert: '/images/tiles/desert.png',
+};
+
+export const BOARD_BACKGROUND_IMAGE = '/images/sea.png';
+
 export const RESOURCE_TYPES: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
 
 export const PLAYER_COLORS: PlayerColor[] = ['red', 'blue', 'white', 'orange', 'green', 'brown', 'purple'];
