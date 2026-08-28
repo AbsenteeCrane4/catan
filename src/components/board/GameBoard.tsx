@@ -79,7 +79,7 @@ export function GameBoard({
       <svg
         viewBox={`${view.minX} ${view.minY} ${view.w} ${view.h}`}
         preserveAspectRatio="xMidYMid meet"
-        className="w-full h-full max-h-[85vh] drop-shadow-2xl"
+        className="w-full h-full max-h-[100vh] drop-shadow-2xl"
         data-cy="game-board"
       >
         <g id="hex-layer">

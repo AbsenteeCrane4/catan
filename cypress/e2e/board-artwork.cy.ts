@@ -35,7 +35,7 @@ describe('Board artwork', () => {
       const image = $hex.find('[data-cy=hex-image]');
       expect(image, `${resource} hex renders an image`).to.have.length(1);
       expect(image.attr('data-image-src')).to.equal(RESOURCE_IMAGE[resource]);
-      expect($hex.attr('data-image-failed'), 'no fallback flag by default').to.be.undefined;
+      expect($hex.attr('data-image-failed'), 'no fallback flag by default').to.equal(undefined);
     });
     cy.get('[data-cy=hex-fallback-fill]').should('not.exist');
 

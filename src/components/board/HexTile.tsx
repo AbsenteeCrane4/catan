@@ -1,13 +1,7 @@
 import { useState } from "react";
 import { Hex } from "@/types/catan";
 import { hexToPixel } from "@/lib/hex-utils";
-import {
-  HEX_RESOURCE_COLORS,
-  HEX_SIZE,
-  HEX_TILE_IMAGES,
-  TILE_IMAGE_SOURCE_SIZE,
-  TILE_IMAGE_HEX_BOUNDS,
-} from "@/lib/constants";
+import { HEX_RESOURCE_COLORS, HEX_SIZE, HEX_TILE_IMAGES } from "@/lib/constants";
 import { clsx } from "clsx";
 
 interface HexTileProps {
@@ -24,17 +18,13 @@ for (let i = 0; i < 6; i++) {
 }
 const POLYGON_POINTS = points.map(([x, y]) => `${x},${y}`).join(" ");
 
-// Maps the source PNG's painted hexagon onto the polygon above, so the image sits
-// flush against its neighbours instead of showing its square canvas's letterboxing.
-const { minX, maxX, minY, maxY } = TILE_IMAGE_HEX_BOUNDS;
-const bboxW = maxX - minX;
-const bboxH = maxY - minY;
-const polyW = Math.sqrt(3) * HEX_SIZE;
-const polyH = 2 * HEX_SIZE;
-const IMAGE_WIDTH = (TILE_IMAGE_SOURCE_SIZE * polyW) / bboxW;
-const IMAGE_HEIGHT = (TILE_IMAGE_SOURCE_SIZE * polyH) / bboxH;
-const IMAGE_X = -((minX + maxX) / 2) * (polyW / bboxW);
-const IMAGE_Y = -((minY + maxY) / 2) * (polyH / bboxH);
+// The source PNGs are pre-normalized (see scripts/normalize-tile-art) so every tile's
+// painted hexagon exactly fills its canvas — the image can be placed straight onto the
+// polygon's bounding box with no per-tile offset, and every tile lines up identically.
+const IMAGE_WIDTH = Math.sqrt(3) * HEX_SIZE;
+const IMAGE_HEIGHT = 2 * HEX_SIZE;
+const IMAGE_X = -IMAGE_WIDTH / 2;
+const IMAGE_Y = -IMAGE_HEIGHT / 2;
 
 export function HexTile({ hex, isSelectable, onClick }: HexTileProps) {
   const { x, y } = hexToPixel(hex.q, hex.r);

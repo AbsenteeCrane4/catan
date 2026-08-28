@@ -27,16 +27,6 @@ export const HEX_TILE_IMAGES: Record<HexResource, string> = {
 
 export const BOARD_BACKGROUND_IMAGE = '/images/sea.png';
 
-/**
- * Every tile PNG is a 1024x1024 canvas with the painted hexagon inset by roughly the
- * same margin (measured directly from the source files, they are not a perfect crop).
- * Used to scale/position each <image> so its hexagon lands exactly on the SVG polygon
- * instead of the image's own square canvas — otherwise tiles would show letterboxing
- * and the board would not read as seamless.
- */
-export const TILE_IMAGE_SOURCE_SIZE = 1024;
-export const TILE_IMAGE_HEX_BOUNDS = { minX: 58, maxX: 969, minY: 13, maxY: 1012 };
-
 export const RESOURCE_TYPES: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
 
 export const PLAYER_COLORS: PlayerColor[] = ['red', 'blue', 'white', 'orange', 'green', 'brown', 'purple'];
