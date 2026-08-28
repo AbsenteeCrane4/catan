@@ -79,7 +79,7 @@ export function GameBoard({
           ))}
         </g>
 
-        <HarbourLayer harbours={harbours} />
+        <HarbourLayer harbours={harbours} nodes={nodes} />
 
         {robberPos && <Robber x={robberPos.x} y={robberPos.y} />}
         
