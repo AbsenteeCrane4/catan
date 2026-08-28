@@ -11,7 +11,8 @@ import { DevCardModal } from "./DevCardModal";
 interface Props {
   players: Player[];
   currentPlayerIndex: number;
-  myPlayerIndex: number;
+  /** null for a spectator — no seat is ever "you". */
+  myPlayerIndex: number | null;
   diceRoll: number | null;
   longestRoad: { playerId: number | null; length: number };
   hasPlayedDevCardThisTurn: boolean;
