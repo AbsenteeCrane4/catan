@@ -201,6 +201,43 @@ existed, running `npm run build` then `npm run lint` locally failed on the minif
 bundle's `require()` calls. CI never saw it because lint and build run on separate
 runners.
 
+## Harbour Placement
+
+Harbours on a Catan board are **not evenly spaced** — some ports sit one buildable node apart, others two. This is not randomness; it comes directly from the leftover-node arithmetic.
+
+### The Math
+
+Given `total` coastal nodes and `count` harbours:
+- Each harbour occupies 2 adjacent nodes → 2 × count nodes consumed
+- Remaining free nodes: `total - 2 * count`
+- Distribute these across `count` gaps: `baseGap = floor(freeNodes / count)` gaps get the base spacing, and `freeNodes % count` gaps get one extra
+
+**Base board**: 30 coastal nodes, 9 harbours → 12 free nodes → 6 gaps of 1 node + 3 gaps of 2 nodes (always)
+**Expansion**: 38 coastal nodes, 11 harbours → 16 free nodes → 6 gaps of 1 node + 5 gaps of 2 nodes (always)
+
+### Common Mistakes
+
+1. **Fixed-step walking** (`Math.floor(total / count)` step size): leaves the remainder piled in one gap, creating an entire side of the board with no harbour. Visually obvious.
+2. **Proportional index without shuffling**: produces the correct 1-and-2 mix but always in the same spots, so casual players never notice the variation.
+3. **Angle-based testing**: angles are continuous but gaps are discrete; they can mislead.
+
+### Correct Approach
+
+[src/lib/hex-utils.ts:196-242](src/lib/hex-utils.ts#L196-L242):
+- Compute the exact arithmetic: `baseGap`, `wideGapCount`
+- **Shuffle which specific gaps get the extra node** so the layout varies each game
+- Randomize the ring's starting point too
+- Advance by `gap + 2` each iteration (harbour's own 2 nodes + free nodes before next)
+
+### Testing
+
+[src/lib/__tests__/harbours.test.ts:141-170](src/lib/__tests__/harbours.test.ts#L141-L170):
+- **`coastalWalk(nodes)`**: walks the true node-adjacency cycle (the only reliable way to measure gaps)
+- **Test 1**: assert the exact gap distribution every run (`baseGap` and `baseGap + 1` counts)
+- **Test 2**: verify layouts vary across games (if this fails, the algorithm is deterministic)
+
+Do NOT use angle approximations or fixed-step logic. Always use the exact arithmetic + shuffle.
+
 ## Scope notes
 
 - Victory target is **10** on both boards; the 5–6 player extension does not change it.

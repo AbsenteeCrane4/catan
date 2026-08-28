@@ -193,50 +193,64 @@ export function generateHarbours(
   // 2. Sort edges by angle to form a circular perimeter ring
   coastalEdges.sort((a, b) => a.angle - b.angle);
 
-  // 3. Evenly distribute the ports along the ring
-  const harbours: Harbour[] = [];
-  const step = Math.max(1, Math.floor(coastalEdges.length / portPool.length));
+  // 3. Evenly distribute the ports along the ring, on a real Catan board the coastal
+  // path between two ports isn't always the same length — some ports sit one buildable
+  // node apart, others two. That comes directly from the leftover-node arithmetic below:
+  // it is never an accident of an approximate spacing formula.
+  //
+  // Each port occupies one coastal edge (2 adjacent nodes). With `total` coastal nodes
+  // and `count` ports, `count` edges' worth of nodes (2 * count) are consumed, leaving
+  // `freeNodes = total - 2*count` unclaimed nodes to distribute as gaps *between* ports
+  // around the ring. `freeNodes / count` is essentially never a whole number, so most
+  // gaps get `floor(freeNodes / count)` free nodes and the `freeNodes % count` leftover
+  // gaps get one extra — i.e. on the base board (30 coastal nodes, 9 ports) 12 free nodes
+  // over 9 gaps means 6 gaps of 1 node and 3 gaps of 2 nodes, never a uniform spacing.
   const shuffledPool = shuffle(portPool, rng);
+  const total = coastalEdges.length;
+  const count = shuffledPool.length;
+  const freeNodes = total - 2 * count;
 
-  // The ring is circular, so walking off the end wraps rather than stopping — otherwise
-  // a run of skipped edges near the end silently returns fewer harbours than the pool.
-  // Two laps is a generous bound; anything beyond that cannot make further progress.
-  const maxSteps = coastalEdges.length * 2;
-
-  let poolIndex = 0;
-  let cursor = 0;
-
-  for (let taken = 0; poolIndex < shuffledPool.length && taken < maxSteps; taken++) {
-    const edge = coastalEdges[cursor % coastalEdges.length];
-
-    // Catan Rule: Ports cannot share a node (they must have space between them)
-    const nodesHavePort = harbours.some(h =>
-      h.nodeIds.includes(edge.n1.id) || h.nodeIds.includes(edge.n2.id)
+  if (freeNodes < 0) {
+    throw new Error(
+      `Not enough coastline for ${count} harbours: ${total} coastal edges need at least ${count * 2}`
     );
-
-    if (!nodesHavePort) {
-      harbours.push({
-        id: `harbour-${poolIndex}`,
-        type: shuffledPool[poolIndex],
-        nodeIds: [edge.n1.id, edge.n2.id],
-        x: edge.midX,
-        y: edge.midY,
-        angle: edge.angle
-      });
-      poolIndex++;
-      cursor += step; // Jump forward
-    } else {
-      cursor++; // Move to the next edge if there's a conflict
-    }
   }
 
-  // Fail loudly: a board quietly missing harbours is far harder to diagnose later than
-  // a refused game creation, and the caller turns this into a lobby error.
-  if (harbours.length !== shuffledPool.length) {
-    throw new Error(
-      `Could only place ${harbours.length} of ${shuffledPool.length} harbours ` +
-      `on ${coastalEdges.length} coastal edges`
-    );
+  const baseGap = Math.floor(freeNodes / count);
+  const wideGapCount = freeNodes % count;
+
+  // Which specific gaps get the extra node is shuffled too, so the wide stretches land
+  // in different places from game to game rather than the same fixed spots every time.
+  const gapSizes = shuffle(
+    [
+      ...Array(wideGapCount).fill(baseGap + 1) as number[],
+      ...Array(count - wideGapCount).fill(baseGap) as number[],
+    ],
+    rng
+  );
+
+  // Randomize which coastal edge the ring starts from as well, so the whole layout
+  // doesn't always begin at the same fixed point on the board.
+  const effectiveRng = rng ?? defaultRng;
+  const startEdgeIndex = Math.floor(effectiveRng() * total);
+
+  const harbours: Harbour[] = [];
+  let edgeIndex = startEdgeIndex;
+
+  for (let i = 0; i < count; i++) {
+    const edge = coastalEdges[edgeIndex % total];
+    harbours.push({
+      id: `harbour-${i}`,
+      type: shuffledPool[i],
+      nodeIds: [edge.n1.id, edge.n2.id],
+      x: edge.midX,
+      y: edge.midY,
+      angle: edge.angle
+    });
+    // Each additional free node in the gap pushes the next port one more edge forward
+    // (the edge immediately after a placed port always shares one of its nodes, so a
+    // gap of 0 needs a 2-edge jump to clear both of the current port's nodes).
+    edgeIndex += gapSizes[i] + 2;
   }
 
   return harbours;
