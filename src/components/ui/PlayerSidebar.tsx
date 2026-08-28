@@ -123,7 +123,7 @@ export function PlayerSidebar({
       <div className="h-[1px] bg-slate-700 w-full my-2" />
 
       {/* --- PLAYERS LIST --- */}
-      <div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
+      <div className="space-y-3 flex-1 min-h-1 pr-1 ">
         {players.map((p, idx) => {
           const isMe = idx === myPlayerIndex;
           const totalHiddenCards = (p.devCards?.playable?.length || 0) + (p.devCards?.boughtThisTurn?.length || 0);
