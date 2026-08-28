@@ -3,7 +3,7 @@ import { GameState, PlayerColor } from '@/types/catan';
 import { HexTile } from './HexTile';
 import { SettlementNode } from './SettlementNode';
 import { RoadLayer } from './RoadLayer';
-import { HEX_SIZE } from '@/lib/constants';
+import { BOARD_BACKGROUND_IMAGE, HEX_SIZE } from '@/lib/constants';
 import { Robber } from '@/components/ui/Robber';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { HarbourLayer } from './HarbourLayer';
@@ -29,6 +29,7 @@ export function GameBoard({
 }: GameBoardProps) {
 
   const [pendingUpgradeNode, setPendingUpgradeNode] = useState<string | null>(null);
+  const [backgroundFailed, setBackgroundFailed] = useState(false);
 
   // Colour by the player's chosen colour, never by seat index.
   const playerColors = useMemo(
@@ -60,8 +61,21 @@ export function GameBoard({
 
   return (
     <div className="flex-1 bg-slate-900 relative overflow-hidden flex items-center justify-center">
-      <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:24px_24px]" />
-      
+      {/* Colour fallback sits underneath so a failed image load still leaves an ocean-ish
+          backdrop instead of bare slate. */}
+      <div className="absolute inset-0 bg-blue-950" data-cy="board-background-fallback" />
+      {!backgroundFailed && (
+        // eslint-disable-next-line @next/next/no-img-element -- needs a plain onError fallback, not next/image's opaque loader
+        <img
+          src={BOARD_BACKGROUND_IMAGE}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+          data-cy="board-background-image"
+          data-image-src={BOARD_BACKGROUND_IMAGE}
+          onError={() => setBackgroundFailed(true)}
+        />
+      )}
+
       <svg
         viewBox={`${view.minX} ${view.minY} ${view.w} ${view.h}`}
         preserveAspectRatio="xMidYMid meet"
