@@ -10,7 +10,8 @@ import { GameOverModal } from '@/components/ui/GameOverModal';
 
 interface GameViewProps {
   state: GameState;
-  myPlayerIndex: number;
+  /** null for a spectator — someone who joined after start with no seat. */
+  myPlayerIndex: number | null;
   performAction: (action: GameAction) => void;
   onLeave: () => void;
 }
@@ -19,12 +20,13 @@ export function GameView({ state, myPlayerIndex, performAction, onLeave }: GameV
   const [activeMapAction, setActiveMapAction] = useState<'none' | 'roadBuilding' | 'knight'>('none');
   const [pendingRoadBuildingRoads, setPendingRoadBuildingRoads] = useState<[string, string][]>([]);
 
-  const isMyTurn = state.currentPlayerIndex === myPlayerIndex;
+  const isMyTurn = myPlayerIndex !== null && state.currentPlayerIndex === myPlayerIndex;
   const isMovingRobber = state.pendingRobberAction?.status === 'moving' && isMyTurn;
   const isStealing = state.pendingRobberAction?.status === 'stealing' && isMyTurn;
 
   // Intercept road building clicks before they hit performAction
   const handleEdgeClick = (n1: string, n2: string) => {
+    if (myPlayerIndex === null) return;
     if (activeMapAction === 'none') {
       performAction({ type: 'BUILD_ROAD', payload: { nodeId1: n1, nodeId2: n2, playerId: myPlayerIndex } });
     } else if (activeMapAction === 'roadBuilding') {
@@ -49,6 +51,7 @@ export function GameView({ state, myPlayerIndex, performAction, onLeave }: GameV
   };
 
   const handleHexClick = (hexId: string) => {
+    if (myPlayerIndex === null) return;
     if (isMovingRobber) {
       performAction({ type: 'MOVE_ROBBER', payload: { hexId, playerId: myPlayerIndex } });
     }
@@ -65,7 +68,10 @@ export function GameView({ state, myPlayerIndex, performAction, onLeave }: GameV
         onRoll={() => performAction({ type: 'ROLL_DICE' })}
         onEndTurn={() => performAction({ type: 'END_TURN' })}
         hasPlayedDevCardThisTurn={state.hasPlayedDevCardThisTurn}
-        onPlayDevCard={(cardType, cardArgs) => performAction({ type: 'PLAY_DEV_CARD', payload: { playerId: myPlayerIndex, cardType, cardArgs } })}
+        onPlayDevCard={(cardType, cardArgs) => {
+          if (myPlayerIndex === null) return;
+          performAction({ type: 'PLAY_DEV_CARD', payload: { playerId: myPlayerIndex, cardType, cardArgs } });
+        }}
         onInitiateMapCard={(cardType) => {
           setActiveMapAction(cardType);
           if (cardType === 'roadBuilding') setPendingRoadBuildingRoads([]);
@@ -93,27 +99,46 @@ export function GameView({ state, myPlayerIndex, performAction, onLeave }: GameV
           pendingRoads={pendingRoadBuildingRoads}
           isMovingRobber={isMovingRobber}
           onHexClick={handleHexClick}
-          onBuildSettlement={(nodeId) => performAction({ type: 'BUILD_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex } })}
+          onBuildSettlement={(nodeId) => {
+            if (myPlayerIndex === null) return;
+            performAction({ type: 'BUILD_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex } });
+          }}
           onBuildRoad={handleEdgeClick}
-          onUpgradeSettlement={(nodeId) => performAction({ type: 'UPGRADE_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex } })}
+          onUpgradeSettlement={(nodeId) => {
+            if (myPlayerIndex === null) return;
+            performAction({ type: 'UPGRADE_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex } });
+          }}
         />
       </main>
 
       {/* Right Sidebar: Trading & Logs */}
       <aside className="w-80 bg-slate-900/50 border-l border-slate-800 flex flex-col overflow-hidden">
         <div className="p-4 border-b border-slate-800 bg-slate-900/30">
-          <TradeUI
-            localPlayerId={myPlayerIndex}
-            currentPlayerIndex={state.currentPlayerIndex}
-            localPlayer={state.players[myPlayerIndex]}
-            players={state.players}
-            currentTradeOffer={state.currentTradeOffer}
-            onTradeWithBank={(offerResource, requestResource) => performAction({ type: 'TRADE_WITH_BANK', payload: { playerId: myPlayerIndex, offerResource, requestResource } })}
-            onProposeTrade={(offer) => performAction({ type: 'PROPOSE_TRADE', payload: { offer } })}
-            onAcceptTrade={() => performAction({ type: 'ACCEPT_TRADE', payload: { acceptorId: myPlayerIndex } })}
-            onCancelTrade={() => performAction({ type: 'CANCEL_TRADE' })}
-            onBuyDevCard={() => performAction({ type: 'BUY_DEV_CARD', payload: { playerId: myPlayerIndex } })}
-          />
+          {myPlayerIndex !== null ? (
+            <TradeUI
+              localPlayerId={myPlayerIndex}
+              currentPlayerIndex={state.currentPlayerIndex}
+              localPlayer={state.players[myPlayerIndex]}
+              players={state.players}
+              currentTradeOffer={state.currentTradeOffer}
+              onTradeWithBank={(offerResource, requestResource) => performAction({ type: 'TRADE_WITH_BANK', payload: { playerId: myPlayerIndex, offerResource, requestResource } })}
+              onProposeTrade={(offer) => performAction({ type: 'PROPOSE_TRADE', payload: { offer } })}
+              onAcceptTrade={() => performAction({ type: 'ACCEPT_TRADE', payload: { acceptorId: myPlayerIndex } })}
+              onCancelTrade={() => performAction({ type: 'CANCEL_TRADE' })}
+              onBuyDevCard={() => performAction({ type: 'BUY_DEV_CARD', payload: { playerId: myPlayerIndex } })}
+            />
+          ) : (
+            <div data-cy="spectator-panel" className="p-4 text-center border border-dashed border-slate-700 rounded-xl">
+              <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-3">You are spectating</p>
+              <button
+                onClick={onLeave}
+                data-cy="stop-spectating-btn"
+                className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-xs font-bold transition-colors"
+              >
+                Leave
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 p-4 flex flex-col overflow-hidden">
@@ -128,7 +153,7 @@ export function GameView({ state, myPlayerIndex, performAction, onLeave }: GameV
         </div>
       </aside>
 
-      {isStealing && state.pendingRobberAction?.validVictims && (
+      {isStealing && myPlayerIndex !== null && state.pendingRobberAction?.validVictims && (
         <StealModal
           victims={state.pendingRobberAction.validVictims}
           players={state.players}
