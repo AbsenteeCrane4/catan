@@ -3,11 +3,17 @@ import React from 'react';
 interface RobberProps {
   x: number;
   y: number;
+  hexId: string;
 }
 
-export const Robber: React.FC<RobberProps> = ({ x, y }) => {
+export const Robber: React.FC<RobberProps> = ({ x, y, hexId }) => {
   return (
-    <g transform={`translate(${x}, ${y})`} className="pointer-events-none transition-all duration-500 ease-in-out">
+    <g
+      transform={`translate(${x}, ${y})`}
+      className="pointer-events-none transition-all duration-500 ease-in-out"
+      data-cy="robber"
+      data-hex-id={hexId}
+    >
       {/* Shadow */}
       <ellipse cx="0" cy="12" rx="12" ry="4" fill="black" fillOpacity="0.3" />
       {/* Body */}

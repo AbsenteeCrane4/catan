@@ -1,5 +1,6 @@
 import { CommandHandler } from "./types";
 import { requireMainPhase } from "@/lib/game/helpers/guards";
+import { takeQueuedDiceTotal } from "@/lib/game/helpers/testDice";
 
 export const rollDice: CommandHandler<'ROLL_DICE'> = (state) => {
   if (state.currentTradeOffer !== null) return state; // Prevent dice rolls during active trades
@@ -7,9 +8,10 @@ export const rollDice: CommandHandler<'ROLL_DICE'> = (state) => {
   const phaseRejection = requireMainPhase(state, "Finish the setup phase before rolling!");
   if (phaseRejection) return phaseRejection;
 
+  const forced = takeQueuedDiceTotal();
   const die1 = Math.floor(Math.random() * 6) + 1;
   const die2 = Math.floor(Math.random() * 6) + 1;
-  const total = die1 + die2;
+  const total = forced ?? die1 + die2;
 
   if (total === 7) {
     return {

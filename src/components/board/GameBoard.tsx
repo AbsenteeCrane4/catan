@@ -95,7 +95,7 @@ export function GameBoard({
 
         <HarbourLayer harbours={harbours} nodes={nodes} />
 
-        {robberPos && <Robber x={robberPos.x} y={robberPos.y} />}
+        {robberPos && robberHex && <Robber x={robberPos.x} y={robberPos.y} hexId={robberHex.id} />}
         
         <RoadLayer nodes={nodes} roads={roads} pendingRoads={pendingRoads} playerColors={playerColors} onBuildRoad={onBuildRoad} />
         

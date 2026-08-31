@@ -6,6 +6,18 @@ import { isValidGameId } from '@/lib/game-id';
 import { MAX_SOCKETS_PER_ROOM, RoomStore } from './rooms';
 import { normaliseGameId, roomKey } from './roomKey';
 import { isActionAllowedFor, withActor } from './actionGuards';
+import { queueDiceTotal, queueStealIndex, resetTestDiceQueues } from '@/lib/game/helpers/testDice';
+
+/**
+ * E2E tests need deterministic dice rolls and steals to avoid flaky, luck-dependent
+ * assertions — this mirrors the injectable `Rng` already used for board generation,
+ * but reachable over the socket since bots run in a separate process from the server.
+ * Gated off in real production: `NODE_ENV=production` covers a deployed container,
+ * and the CI e2e job (which runs `npm start`, i.e. NODE_ENV=production, against a
+ * genuine production build) opts back in via ENABLE_TEST_HOOKS so the seam is only
+ * ever absent from an actual deployment.
+ */
+const TEST_HOOKS_ENABLED = process.env.NODE_ENV !== 'production' || process.env.ENABLE_TEST_HOOKS === 'true';
 
 /** What the server remembers about a live socket. Keyed by socket.id, cleared on disconnect. */
 interface SocketContext {
@@ -238,6 +250,23 @@ export function registerSocketHandlers(io: Server, store: RoomStore = new RoomSt
       broadcastLobby(ctx.gameId);
       scheduleDeletionIfEmpty(ctx.gameId);
     });
+
+    if (TEST_HOOKS_ENABLED) {
+      socket.on('test:queue-dice', (payload: { total?: number }, ack?: unknown) => {
+        if (typeof payload?.total === 'number') queueDiceTotal(payload.total);
+        reply(ack, { ok: true });
+      });
+
+      socket.on('test:queue-steal-index', (payload: { index?: number }, ack?: unknown) => {
+        if (typeof payload?.index === 'number') queueStealIndex(payload.index);
+        reply(ack, { ok: true });
+      });
+
+      socket.on('test:reset-dice', (_payload: unknown, ack?: unknown) => {
+        resetTestDiceQueues();
+        reply(ack, { ok: true });
+      });
+    }
   });
 
   return store;

@@ -61,6 +61,11 @@ jobs:
       # the ~200 MB Cypress binary keyed on the version in package-lock.json.
       - name: Build, start server and run Cypress
         uses: cypress-io/github-action@v6
+        env:
+          # This job runs the real production build (npm start -> NODE_ENV=production),
+          # so the deterministic dice/steal test hooks (src/lib/game/helpers/testDice.ts)
+          # need an explicit opt-in here — they stay off in an actual deployment.
+          ENABLE_TEST_HOOKS: 'true'
         with:
           build: npm run build
           start: npm start
@@ -113,7 +118,7 @@ jobs:
     # e2e runs in parallel with build (both only need test), and both must pass
     # before anything is published — a broken lobby or board must not reach prod.
     needs: [build, e2e]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -156,7 +161,7 @@ jobs:
   deploy:
     name: Deploy to Production Server
     needs: docker-publish
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions: 
       packages: read

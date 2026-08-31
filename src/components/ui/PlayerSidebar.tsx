@@ -170,7 +170,12 @@ export function PlayerSidebar({
               {/* Resources */}
               <div className="grid grid-cols-5 gap-1 text-[10px] text-slate-300 mb-2">
                 {Object.entries(p.resources).map(([res, count]) => (
-                  <div key={res} className="flex flex-col items-center bg-slate-900/50 p-1 rounded border border-white/5">
+                  <div
+                    key={res}
+                    data-cy="resource-count"
+                    data-resource={res}
+                    className="flex flex-col items-center bg-slate-900/50 p-1 rounded border border-white/5"
+                  >
                     <div className="w-2 h-2 rounded-full mb-1" style={{ backgroundColor: RESOURCE_COLORS[res as ResourceType] }} />
                     <span className={count > 0 ? "text-white font-bold" : "text-slate-600"}>{count}</span>
                   </div>

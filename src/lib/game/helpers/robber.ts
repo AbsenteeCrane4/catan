@@ -1,5 +1,6 @@
 import { GameState, ResourceType } from "@/types/catan";
 import { nameOf } from "./playerName";
+import { takeQueuedStealIndex } from "./testDice";
 
 export function executeSteal(state: GameState, thiefId: number, victimId: number): GameState {
   const victim = state.players[victimId];
@@ -18,7 +19,10 @@ export function executeSteal(state: GameState, thiefId: number, victimId: number
     };
   }
 
-  const stolenIndex = Math.floor(Math.random() * availableResources.length);
+  const forced = takeQueuedStealIndex();
+  const stolenIndex = forced !== null && forced < availableResources.length
+    ? forced
+    : Math.floor(Math.random() * availableResources.length);
   const stolenRes = availableResources[stolenIndex];
 
   const newPlayers = [...state.players];

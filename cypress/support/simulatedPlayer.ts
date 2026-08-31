@@ -15,6 +15,13 @@ interface GameNodeLike {
   id: string;
   pixelPos: { x: number; y: number };
   neighbors: string[];
+  hexIds: string[];
+}
+
+interface GameHexLike {
+  id: string;
+  resource: string;
+  numberToken: number | null;
 }
 
 interface GameStateLike {
@@ -22,8 +29,14 @@ interface GameStateLike {
   phase: string;
   setupActionRequired: string;
   nodes: GameNodeLike[];
+  hexes: GameHexLike[];
+  robberHexId: string;
   settlements: Record<string, { playerId: number }>;
   roads: Record<string, { playerId: number }>;
+  players: { resources: Record<string, number> }[];
+  diceRoll: number | null;
+  pendingRobberAction: { status: string; validVictims?: number[] } | null;
+  gameLog: string[];
 }
 
 interface Bot {
@@ -171,6 +184,50 @@ export function registerBotTasks(on: Cypress.PluginEvents) {
       await waitForBot(id, bot => !!bot.state?.roads[roadId]);
 
       return { nodeId: node.id, roadId };
+    },
+
+    /** Returns this bot's last-known synced GameState, for tests to inspect and pick targets from. */
+    async botGetState({ id }: { id: string }) {
+      const bot = bots.get(id);
+      if (!bot) throw new Error(`No bot registered with id "${id}"`);
+      return bot.state;
+    },
+
+    /** Fires an arbitrary game-action for this bot and waits for its effect to land. */
+    async botAction({ id, action }: { id: string; action: unknown }) {
+      const bot = bots.get(id);
+      if (!bot) throw new Error(`No bot registered with id "${id}"`);
+      const prevLogLen = bot.state?.gameLog?.length ?? 0;
+      bot.socket.emit('game-action', { action });
+      const updated = await waitForBot(id, b => (b.state?.gameLog?.length ?? 0) > prevLogLen);
+      return updated.state;
+    },
+
+    /**
+     * Queues a forced dice total on the server (see src/lib/game/helpers/testDice.ts),
+     * consumed by this bot's NEXT ROLL_DICE action instead of a real random roll.
+     * Only registered server-side outside production builds.
+     */
+    async botQueueDice({ id, total }: { id: string; total: number }) {
+      const bot = bots.get(id);
+      if (!bot) throw new Error(`No bot registered with id "${id}"`);
+      await ackRequest(bot.socket, 'test:queue-dice', { total });
+      return null;
+    },
+
+    /** Queues which of the victim's held cards (by flattened index) the next steal takes. */
+    async botQueueStealIndex({ id, index }: { id: string; index: number }) {
+      const bot = bots.get(id);
+      if (!bot) throw new Error(`No bot registered with id "${id}"`);
+      await ackRequest(bot.socket, 'test:queue-steal-index', { index });
+      return null;
+    },
+
+    async botResetDiceQueue({ id }: { id: string }) {
+      const bot = bots.get(id);
+      if (!bot) throw new Error(`No bot registered with id "${id}"`);
+      await ackRequest(bot.socket, 'test:reset-dice', {});
+      return null;
     },
 
     async botDisconnect({ id }: { id: string }) {
