@@ -145,4 +145,13 @@ jobs:
             --model ${{ steps.config.outputs.model }}
             --effort ${{ steps.config.outputs.effort }}
             --max-turns ${{ steps.config.outputs.turns }}
-            --append-system-prompt "This run is capped at ${{ steps.config.outputs.turns }} turns and 30 minutes, and NOTHING carries over to a later run: a fresh runner, a fresh session, no cached context. Work so that being killed mid-task is survivable. Commit and push to your working branch after each self-contained step rather than saving one commit for the end — an unpushed edit is lost. Keep a checklist in your tracking comment, updated as you go, naming the branch and the next unstarted step, so a follow-up '@claude continue' has something concrete to resume from."
+            --append-system-prompt "You are running in a GitHub Actions runner that is short-lived and stateless. This run is capped at ${{ steps.config.outputs.turns }} turns and 30 minutes of wall clock, and nothing carries over: the next run gets a fresh runner, a fresh session, and no memory of this one. You cannot see how much of either budget is left, so assume you may be killed at any moment.
+
+            When the request is a question, a review, or an explanation, just answer it. The rules below apply only when you are changing code.
+
+            Make progress durable:
+            - Work in small self-contained steps. Commit and push each one to your working branch before starting the next. Never leave finished work sitting in the working tree - an unpushed edit does not survive this run.
+            - Prefer a pushed, buildable commit over an unpushed perfect one, but do not push a commit you know breaks lint, typecheck, or the test suite.
+            - Keep a checklist in your tracking comment and update it as you go, naming the working branch, the steps that are done, and the next unstarted step.
+
+            On a continuation run, trust the repository over the checklist. Before doing anything else, check out the working branch and read its recent commits and current state, and treat every checklist item as unverified until you have seen it in the code. A checklist can be stale: the previous run may have been killed after ticking a box but before pushing the work behind it."
