@@ -10,6 +10,12 @@ on:
   pull_request_review:
     types: [submitted]
 
+# Hard cap #1: one Claude run per issue/PR at a time. A burst of @claude
+# comments queues instead of fanning out into parallel runners.
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   claude:
     if: |
@@ -20,7 +26,8 @@ jobs:
         (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
         (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
       )
-    timeout-minutes: 15
+    # Hard cap #2: wall clock. Not overridable from a comment.
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,22 +41,105 @@ jobs:
         with:
           fetch-depth: 1
 
+      # ============================================================
+      # PARSE CLAUDE OPTIONS FROM THE COMMENT
+      #
+      #   @claude --model opus --effort high --turns 30 <request>
+      #
+      # Out-of-range values are clamped, never fatal: a typo in a
+      # comment should not produce a red X with no explanation.
+      # ============================================================
+      - name: Configure Claude
+        id: config
+        shell: bash
+        env:
+          # Interpolated into env, never into the script body — a comment
+          # body is untrusted input and would otherwise be shell injection.
+          # For `issues` events, title and body are both searched.
+          COMMENT_BODY: ${{ github.event.comment.body || github.event.review.body || format('{0} {1}', github.event.issue.title, github.event.issue.body) }}
+        run: |
+          set -euo pipefail
+
+          # Defaults
+          MODEL="sonnet"
+          EFFORT="medium"
+          TURNS="15"
+
+          # Hard cap #3: turns. A comment can lower this, never raise it.
+          TURNS_CAP="50"
+
+          NOTES=()
+
+          # --- Model: sonnet | opus | haiku ------------------------
+          if [[ "$COMMENT_BODY" =~ --model[[:space:]]+(sonnet|opus|haiku) ]]; then
+            MODEL="${BASH_REMATCH[1]}"
+          fi
+
+          # --- Effort: low | medium | high | xhigh | max -----------
+          # Which levels a model actually supports varies; xhigh/max are
+          # Opus-tier. An unsupported level is the model's problem, not ours.
+          if [[ "$COMMENT_BODY" =~ --effort[[:space:]]+(low|medium|high|xhigh|max) ]]; then
+            EFFORT="${BASH_REMATCH[1]}"
+          fi
+
+          # --- Turns: 1..TURNS_CAP, clamped -----------------------
+          if [[ "$COMMENT_BODY" =~ --turns[[:space:]]+([0-9]+) ]]; then
+            REQUESTED="${BASH_REMATCH[1]}"
+            if (( REQUESTED < 1 )); then
+              NOTES+=("\`--turns $REQUESTED\` is below 1 — using 1.")
+              TURNS="1"
+            elif (( REQUESTED > TURNS_CAP )); then
+              NOTES+=("\`--turns $REQUESTED\` exceeds the cap of $TURNS_CAP — using $TURNS_CAP.")
+              TURNS="$TURNS_CAP"
+            else
+              TURNS="$REQUESTED"
+            fi
+          fi
+
+          {
+            echo "model=$MODEL"
+            echo "effort=$EFFORT"
+            echo "turns=$TURNS"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Claude configuration"
+            echo ""
+            echo "| Setting | Value |"
+            echo "| --- | --- |"
+            echo "| Model | \`$MODEL\` |"
+            echo "| Effort | \`$EFFORT\` |"
+            echo "| Max turns | \`$TURNS\` (cap $TURNS_CAP) |"
+            echo "| Timeout | 30 min |"
+            for note in ${NOTES+"${NOTES[@]}"}; do
+              echo ""
+              echo "> $note"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ============================================================
+      # RUN CLAUDE
+      # ============================================================
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
-
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
           claude_args: |
-            --max-turns 8
+            --model ${{ steps.config.outputs.model }}
+            --effort ${{ steps.config.outputs.effort }}
+            --max-turns ${{ steps.config.outputs.turns }}
+            --append-system-prompt "You are running in a GitHub Actions runner that is short-lived and stateless. This run is capped at ${{ steps.config.outputs.turns }} turns and 30 minutes of wall clock, and nothing carries over: the next run gets a fresh runner, a fresh session, and no memory of this one. You cannot see how much of either budget is left, so assume you may be killed at any moment.
 
+            When the request is a question, a review, or an explanation, just answer it. The rules below apply only when you are changing code.
+
+            Make progress durable:
+            - Work in small self-contained steps. Commit and push each one to your working branch before starting the next. Never leave finished work sitting in the working tree - an unpushed edit does not survive this run.
+            - Prefer a pushed, buildable commit over an unpushed perfect one, but do not push a commit you know breaks lint, typecheck, or the test suite.
+            - Keep a checklist in your tracking comment and update it as you go, naming the working branch, the steps that are done, and the next unstarted step.
+
+            On a continuation run, trust the repository over the checklist. Before doing anything else, check out the working branch and read its recent commits and current state, and treat every checklist item as unverified until you have seen it in the code. A checklist can be stale: the previous run may have been killed after ticking a box but before pushing the work behind it."
