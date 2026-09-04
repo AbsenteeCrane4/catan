@@ -68,6 +68,13 @@ UI event -> performAction() -> socket 'game-action'
 is the only socket boundary on the client. Request/response uses socket.io **acks**
 (the client must learn which seat it got); broadcasts are fire-and-forget.
 
+**There is no per-seat redaction yet.** `broadcastGame` emits `room.game` verbatim to the
+whole socket room, so every client — players and spectators alike — receives every hand
+and the dev-card deck. Nothing in the game is actually hidden information today; the UI
+merely declines to render other players' cards. Any feature that depends on secrecy
+(private hands, face-down dev cards) has to add a `GameState` → per-player view on the
+server first — hiding it client-side is not hiding it. Tracked as issue #47.
+
 ### Reducer: command registry
 
 [src/lib/game/reducer.ts](src/lib/game/reducer.ts) is a dispatch table, not a switch.
@@ -196,10 +203,35 @@ do not collide with Vitest's. Videos/screenshots are gitignored and recorded in 
 `docker-publish` needs **both** `build` and `e2e`, so a broken lobby or board blocks
 deployment. The e2e job runs against a **production** build via `npm start`.
 
+`docker-publish` and `deploy` are **gated on tag pushes** (`startsWith(github.ref,
+'refs/tags/')`) — a merge to `main` runs the tests and the build but ships nothing. To
+release, push a tag. Everything above them runs on PRs to `main` as well.
+
+The `test` job runs `npm run test` (bare `vitest`), which is safe there only because a
+non-TTY runner makes vitest exit after one pass. Locally it watches — use `npx vitest run`.
+
+[.github/workflows/claude.yml](.github/workflows/claude.yml) is separate from CI: it
+answers `@claude` mentions on issues, PRs and reviews, and is restricted to
+`github.actor == github.repository_owner`.
+
 `dist-server/` is generated build output and is ESLint-ignored — before that ignore
 existed, running `npm run build` then `npm run lint` locally failed on the minified
 bundle's `require()` calls. CI never saw it because lint and build run on separate
 runners.
+
+### Docker
+
+[dockerfile](dockerfile) (lower-case filename) is a four-stage build: `deps` (full
+install) → `deps-prod` (`npm ci --omit=dev`) → `builder` (`npm run build`) → `runner`.
+The runner copies `.next/`, `public/`, prod `node_modules`, and
+**`dist-server/server.js` → `/app/server.js`**, then runs `node server.js` on port 3000 —
+it never runs `next start`. So the tsup output path is load-bearing: renaming or
+splitting the server bundle breaks the image even though `npm run build` still passes.
+This is also where the React/Next-free rule for `src/lib/server/*` actually bites — the
+runner stage has no dev dependencies to fall back on.
+
+`deploy` SSHes to the server, pulls the new GHCR image and runs `docker compose up -d`
+from `~/Catan`; the compose file lives on the server, not in this repo.
 
 ## Harbour Placement
 
@@ -238,7 +270,40 @@ Given `total` coastal nodes and `count` harbours:
 
 Do NOT use angle approximations or fixed-step logic. Always use the exact arithmetic + shuffle.
 
+## Writing GitHub issues
+
+Issues are filed with `gh issue create --repo AbsenteeCrane4/catan`. Write the body to a
+file and pass `--body-file` — the bodies are long and contain backticks and heredoc-hostile
+characters. Label feature work `enhancement`.
+
+Substantive issues follow a fixed shape (see #19, #40 for the reference examples). Keep
+this order:
+
+1. `# Title` heading restating the feature
+2. A one-sentence user story, **bold-italic**, in the form `**_As a player, I want … so that …_**`
+3. `## Description` — prose: what exists now, what must change, what is explicitly *not* in scope
+4. One or more `## <Area> Requirements` sections — the bulk of the issue, grouped by concern rather than one flat list
+5. `## Acceptance Criteria` — observable outcomes, not implementation
+6. `## Tasks` — the implementation checklist, roughly in execution order
+7. `## Definition of Done` — the ship gate, including which test suites must pass
+
+**Every bullet from section 4 onward is a `- [ ]` checkbox**, including in Description-
+adjacent lists. Closed issues have them ticked (#40), so the checkboxes are used as real
+progress tracking, not decoration.
+
+Two conventions worth keeping:
+
+- Reference related issues by number (`tracked as issue #20`) rather than restating them.
+- Where a requirement collides with something in this file — an invariant, the
+  server-authoritative model, the no-redaction gap — call it out in the Description with
+  a short `### ` subsection explaining *why* the naive implementation fails. #47 does this
+  for hidden hands.
+
+Short tracking issues with a title and no body exist too (#41, #45). Only write one of
+those if asked for a placeholder.
+
 ## Scope notes
 
 - Victory target is **10** on both boards; the 5–6 player extension does not change it.
 - The Special Build Phase is deliberately out of scope (tracked as issue #20).
+- The in-game layout is being reworked colonist.io-style, including real per-seat hidden hands (issue #47).
