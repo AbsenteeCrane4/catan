@@ -29,12 +29,6 @@ jobs:
     # Hard cap #2: wall clock. Not overridable from a comment.
     timeout-minutes: 30
     runs-on: ubuntu-latest
-    # NOTE: because `github_token` is not passed below, the action authenticates
-    # as the Claude GitHub App, which carries its own read+write Contents/Issues/
-    # PullRequests scopes. This block only scopes GITHUB_TOKEN, which is unused —
-    # so these read-only values do NOT restrict what Claude can do. To make the
-    # block actually binding, pass `github_token: ${{ secrets.GITHUB_TOKEN }}`
-    # (and then these must become `write` or Claude cannot comment or push).
     permissions:
       contents: read
       pull-requests: read
@@ -125,12 +119,6 @@ jobs:
 
       # ============================================================
       # RUN CLAUDE
-      #
-      # Auth is the subscription OAuth token only. No ANTHROPIC_API_KEY
-      # fallback is configured anywhere in this repo on purpose: without
-      # an API key there is no billing path, so a run can never spend
-      # credits — it can only consume subscription usage, and stops when
-      # that is exhausted. Do not add one.
       # ============================================================
       - name: Run Claude Code
         id: claude
