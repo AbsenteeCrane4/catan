@@ -10,6 +10,12 @@ on:
   pull_request_review:
     types: [submitted]
 
+# Hard cap #1: one Claude run per issue/PR at a time. A burst of @claude
+# comments queues instead of fanning out into parallel runners.
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   claude:
     if: |
@@ -20,8 +26,15 @@ jobs:
         (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
         (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
       )
-    timeout-minutes: 15
+    # Hard cap #2: wall clock. Not overridable from a comment.
+    timeout-minutes: 30
     runs-on: ubuntu-latest
+    # NOTE: because `github_token` is not passed below, the action authenticates
+    # as the Claude GitHub App, which carries its own read+write Contents/Issues/
+    # PullRequests scopes. This block only scopes GITHUB_TOKEN, which is unused —
+    # so these read-only values do NOT restrict what Claude can do. To make the
+    # block actually binding, pass `github_token: ${{ secrets.GITHUB_TOKEN }}`
+    # (and then these must become `write` or Claude cannot comment or push).
     permissions:
       contents: read
       pull-requests: read
@@ -34,22 +47,102 @@ jobs:
         with:
           fetch-depth: 1
 
+      # ============================================================
+      # PARSE CLAUDE OPTIONS FROM THE COMMENT
+      #
+      #   @claude --model opus --effort high --turns 30 <request>
+      #
+      # Out-of-range values are clamped, never fatal: a typo in a
+      # comment should not produce a red X with no explanation.
+      # ============================================================
+      - name: Configure Claude
+        id: config
+        shell: bash
+        env:
+          # Interpolated into env, never into the script body — a comment
+          # body is untrusted input and would otherwise be shell injection.
+          # For `issues` events, title and body are both searched.
+          COMMENT_BODY: ${{ github.event.comment.body || github.event.review.body || format('{0} {1}', github.event.issue.title, github.event.issue.body) }}
+        run: |
+          set -euo pipefail
+
+          # Defaults
+          MODEL="sonnet"
+          EFFORT="medium"
+          TURNS="15"
+
+          # Hard cap #3: turns. A comment can lower this, never raise it.
+          TURNS_CAP="50"
+
+          NOTES=()
+
+          # --- Model: sonnet | opus | haiku ------------------------
+          if [[ "$COMMENT_BODY" =~ --model[[:space:]]+(sonnet|opus|haiku) ]]; then
+            MODEL="${BASH_REMATCH[1]}"
+          fi
+
+          # --- Effort: low | medium | high | xhigh | max -----------
+          # Which levels a model actually supports varies; xhigh/max are
+          # Opus-tier. An unsupported level is the model's problem, not ours.
+          if [[ "$COMMENT_BODY" =~ --effort[[:space:]]+(low|medium|high|xhigh|max) ]]; then
+            EFFORT="${BASH_REMATCH[1]}"
+          fi
+
+          # --- Turns: 1..TURNS_CAP, clamped -----------------------
+          if [[ "$COMMENT_BODY" =~ --turns[[:space:]]+([0-9]+) ]]; then
+            REQUESTED="${BASH_REMATCH[1]}"
+            if (( REQUESTED < 1 )); then
+              NOTES+=("\`--turns $REQUESTED\` is below 1 — using 1.")
+              TURNS="1"
+            elif (( REQUESTED > TURNS_CAP )); then
+              NOTES+=("\`--turns $REQUESTED\` exceeds the cap of $TURNS_CAP — using $TURNS_CAP.")
+              TURNS="$TURNS_CAP"
+            else
+              TURNS="$REQUESTED"
+            fi
+          fi
+
+          {
+            echo "model=$MODEL"
+            echo "effort=$EFFORT"
+            echo "turns=$TURNS"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Claude configuration"
+            echo ""
+            echo "| Setting | Value |"
+            echo "| --- | --- |"
+            echo "| Model | \`$MODEL\` |"
+            echo "| Effort | \`$EFFORT\` |"
+            echo "| Max turns | \`$TURNS\` (cap $TURNS_CAP) |"
+            echo "| Timeout | 30 min |"
+            for note in ${NOTES+"${NOTES[@]}"}; do
+              echo ""
+              echo "> $note"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ============================================================
+      # RUN CLAUDE
+      #
+      # Auth is the subscription OAuth token only. No ANTHROPIC_API_KEY
+      # fallback is configured anywhere in this repo on purpose: without
+      # an API key there is no billing path, so a run can never spend
+      # credits — it can only consume subscription usage, and stops when
+      # that is exhausted. Do not add one.
+      # ============================================================
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
-
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
           claude_args: |
-            --max-turns 8
-
+            --model ${{ steps.config.outputs.model }}
+            --effort ${{ steps.config.outputs.effort }}
+            --max-turns ${{ steps.config.outputs.turns }}
+            --append-system-prompt "This run is capped at ${{ steps.config.outputs.turns }} turns and 30 minutes, and NOTHING carries over to a later run: a fresh runner, a fresh session, no cached context. Work so that being killed mid-task is survivable. Commit and push to your working branch after each self-contained step rather than saving one commit for the end — an unpushed edit is lost. Keep a checklist in your tracking comment, updated as you go, naming the branch and the next unstarted step, so a follow-up '@claude continue' has something concrete to resume from."
