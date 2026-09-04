@@ -60,6 +60,45 @@ export interface GameState {
   currentTradeOffer: TradeOffer | null;
 }
 
+/**
+ * A player as seen by one seat. Opponents are reduced to the counts a real Catan table
+ * exposes: how many cards are in the hand, not which ones.
+ *
+ * `resources` / `devCards` are `null` for every seat except the viewer, so a leak is a
+ * type error at the point of use rather than a silently rendered hand.
+ */
+export interface PlayerView extends Omit<Player, 'resources' | 'devCards'> {
+  /** The full hand — only for the viewing seat (and for everyone once the game is over). */
+  resources: Record<ResourceType, number> | null;
+  /** The full dev-card hand — only for the viewing seat (and once the game is over). */
+  devCards: Player['devCards'] | null;
+  /** Face-down resource card count. Public for every seat. */
+  resourceCount: number;
+  /** Face-down dev-card count (playable + bought this turn). Public for every seat. */
+  devCardCount: number;
+  /** Dev cards already played. Public — everyone watched them being played. */
+  playedDevCards: DevelopmentCardType[];
+  /**
+   * For opponents this is the *public* total: settlements, cities and the two award
+   * cards, with held Victory Point cards excluded. Sending the true total would leak
+   * exactly the cards the VP card is meant to hide. For the viewing seat (and for
+   * everyone once `isGameOver` is set) it is the true total.
+   */
+  victoryPoints: number;
+}
+
+/**
+ * `GameState` as broadcast to one socket. Produced by `redactStateFor`; this is the only
+ * shape a client ever receives.
+ */
+export interface GameStateView extends Omit<GameState, 'players' | 'devCardDeck'> {
+  players: PlayerView[];
+  /** Deck size only. The ordered deck would reveal every future draw. */
+  devCardDeckCount: number;
+  /** The seat this view was built for; `null` for a spectator. */
+  viewerSeatIndex: number | null;
+}
+
 export interface GameNode {
   id: string; // "q1,r1|q2,r2|q3,r3" (sorted)
   hexIds: string[]; // The IDs of the 1-3 hexes this node touches
