@@ -88,6 +88,17 @@ export interface PlayerView extends Omit<Player, 'resources' | 'devCards'> {
 }
 
 /**
+ * A `PlayerView` whose hand the server actually sent: the viewing seat, or every player
+ * once `isGameOver` is set. Narrow to this with `isRevealed` rather than asserting the
+ * nullable fields away — the null is the only thing standing between a component and an
+ * opponent's hand.
+ */
+export type RevealedPlayerView = PlayerView & {
+  resources: Record<ResourceType, number>;
+  devCards: Player['devCards'];
+};
+
+/**
  * `GameState` as broadcast to one socket. Produced by `redactStateFor`; this is the only
  * shape a client ever receives.
  */

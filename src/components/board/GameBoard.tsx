@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { GameState, PlayerColor } from '@/types/catan';
+import { GameStateView, PlayerColor } from '@/types/catan';
 import { HexTile } from './HexTile';
 import { SettlementNode } from './SettlementNode';
 import { RoadLayer } from './RoadLayer';
@@ -9,7 +9,7 @@ import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { HarbourLayer } from './HarbourLayer';
 
 interface GameBoardProps {
-  state: GameState;
+  state: GameStateView;
   pendingRoads?: [string, string][];
   isMovingRobber?: boolean;
   onHexClick?: (hexId: string) => void;

@@ -17,6 +17,21 @@ interface GameNodeLike {
   neighbors: string[];
 }
 
+/**
+ * A player as it arrives on the wire — i.e. already redacted. `resources` / `devCards`
+ * are null for everyone but the receiving seat, which is precisely what the
+ * private-hands spec asserts, so the bot keeps them nullable rather than tidying
+ * them away.
+ */
+interface PlayerLike {
+  id: number;
+  resources: Record<string, number> | null;
+  devCards: { playable: string[]; boughtThisTurn: string[]; played: string[] } | null;
+  resourceCount: number;
+  devCardCount: number;
+  victoryPoints: number;
+}
+
 interface GameStateLike {
   currentPlayerIndex: number;
   phase: string;
@@ -24,6 +39,8 @@ interface GameStateLike {
   nodes: GameNodeLike[];
   settlements: Record<string, { playerId: number }>;
   roads: Record<string, { playerId: number }>;
+  players: PlayerLike[];
+  viewerSeatIndex: number | null;
 }
 
 interface Bot {
@@ -171,6 +188,16 @@ export function registerBotTasks(on: Cypress.PluginEvents) {
       await waitForBot(id, bot => !!bot.state?.roads[roadId]);
 
       return { nodeId: node.id, roadId };
+    },
+
+    /**
+     * The last `SYNC_STATE` payload this bot actually received, so a spec can assert on
+     * the wire rather than on the DOM. Hiding a hand in the browser proves nothing if
+     * the socket handed it over — this is the only way to test the difference.
+     */
+    async botState({ id }: { id: string }) {
+      const bot = await waitForBot(id, current => current.state !== null);
+      return bot.state;
     },
 
     async botDisconnect({ id }: { id: string }) {

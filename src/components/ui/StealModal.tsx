@@ -1,10 +1,10 @@
-import { Player } from "@/types/catan";
+import { PlayerView } from "@/types/catan";
 import { Users } from "lucide-react";
 import { playerName } from "@/lib/game/helpers/playerName";
 
 interface StealModalProps {
   victims: number[];
-  players: Player[];
+  players: PlayerView[];
   onSelect: (victimId: number) => void;
 }
 

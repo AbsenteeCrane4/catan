@@ -1,10 +1,10 @@
 import { Trophy, LogOut } from 'lucide-react';
-import { Player } from '@/types/catan';
+import { PlayerView } from '@/types/catan';
 import { playerName } from '@/lib/game/helpers/playerName';
 
 interface GameOverModalProps {
   winnerId: number;
-  players: Player[];
+  players: PlayerView[];
   onLeaveRoom: () => void;
 }
 

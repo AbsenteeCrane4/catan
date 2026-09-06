@@ -39,6 +39,9 @@ export function GameRoom({ gameId }: { gameId: string }) {
   }
 
   // Started, but this browser never claimed a seat — offer to watch or bail out.
+  // This gate is seat *ownership*, which the lobby ack answers before any game state
+  // has arrived, so it reads the ack's seatIndex. Everything downstream of here reads
+  // the seat off the redacted payload instead (`GameStateView.viewerSeatIndex`).
   if (seatIndex === null && !isSpectating) {
     return (
       <div
@@ -78,7 +81,6 @@ export function GameRoom({ gameId }: { gameId: string }) {
   return (
     <GameView
       state={state}
-      myPlayerIndex={seatIndex}
       performAction={performAction}
       onLeave={goHome}
     />
