@@ -41,6 +41,20 @@ jobs:
         with:
           fetch-depth: 1
 
+      # Dependencies are installed here, not by Claude, for two reasons:
+      # `npm ci` isn't in Claude's allowlist (and won't be — it's slow and has
+      # no business being a per-turn cost), and doing it up front means
+      # `npm run lint` / `npx vitest run` are actually runnable turn one
+      # instead of burning turns on a Bash denial.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       # ============================================================
       # PARSE CLAUDE OPTIONS FROM THE COMMENT
       #
@@ -133,13 +147,14 @@ jobs:
             --model ${{ steps.config.outputs.model }}
             --effort ${{ steps.config.outputs.effort }}
             --max-turns ${{ steps.config.outputs.turns }}
-            --append-system-prompt "You are running in a GitHub Actions runner that is short-lived and stateless. This run is capped at ${{ steps.config.outputs.turns }} turns and 30 minutes of wall clock, and nothing carries over: the next run gets a fresh runner, a fresh session, and no memory of this one. You cannot see how much of either budget is left, so assume you may be killed at any moment.
+            --allowedTools "Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(npm run lint:*),Bash(npx vitest run:*)"
+            --append-system-prompt "You are running in a GitHub Actions runner that is short-lived and stateless. This run is capped at ${{ steps.config.outputs.turns }} turns and 30 minutes of wall clock, and nothing carries over: the next run gets a fresh runner, a fresh session, and no memory of this one. You cannot see how much of either budget is left, so assume you may be killed at any moment. Dependencies are already installed (npm ci ran before you started) - do not attempt to install or reinstall them.
 
             When the request is a question, a review, or an explanation, just answer it. The rules below apply only when you are changing code.
 
             Make progress durable:
             - Work in small self-contained steps. Commit and push each one to your working branch before starting the next. Never leave finished work sitting in the working tree - an unpushed edit does not survive this run.
-            - Prefer a pushed, buildable commit over an unpushed perfect one, but do not push a commit you know breaks lint, typecheck, or the test suite.
+            - Before pushing, run `npx vitest run` and `npm run lint` on what you changed. Do not push a commit you know breaks either.
             - Keep a checklist in your tracking comment and update it as you go, naming the working branch, the steps that are done, and the next unstarted step.
 
-            On a continuation run, trust the repository over the checklist. Before doing anything else, check out the working branch and read its recent commits and current state, and treat every checklist item as unverified until you have seen it in the code. A checklist can be stale: the previous run may have been killed after ticking a box but before pushing the work behind it."
+            On a continuation run, trust the repository over the checklist: run `git log` and `git diff` to see what the previous run actually committed before doing anything else, and treat every checklist item as unverified until you have seen it in the code. A checklist can be stale: the previous run may have been killed after ticking a box but before pushing the work behind it. Note that each issue-triggered run creates a fresh branch off the default branch - it cannot resume commits sitting on a previous run's branch unless this run was triggered on that same open PR."
