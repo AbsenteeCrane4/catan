@@ -24,3 +24,23 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/**
+ * A card lifting when the player gains that resource (docs/DESIGN.md §30). Short enough
+ * that it is over before the player can act on the new card.
+ */
+@keyframes card-gain {
+  0% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-10px) scale(1.06); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.animate-card-gain {
+  animation: card-gain 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-card-gain {
+    animation: none;
+  }
+}
