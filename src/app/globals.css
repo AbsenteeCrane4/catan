@@ -44,3 +44,24 @@ body {
     animation: none;
   }
 }
+
+/**
+ * The one highlight used for every legal target — settlement nodes, road edges and
+ * robber hexes — so "you may click this" reads the same wherever it appears
+ * (docs/DESIGN.md §19, issue #54).
+ */
+@keyframes legal-target-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+.legal-target-pulse {
+  animation: legal-target-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .legal-target-pulse {
+    animation: none;
+    opacity: 0.9;
+  }
+}

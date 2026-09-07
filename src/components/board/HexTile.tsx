@@ -37,7 +37,7 @@ export function HexTile({ hex, isSelectable, onClick }: HexTileProps) {
       transform={`translate(${x}, ${y})`}
       className={clsx(
         "group transition-all duration-300",
-        isSelectable && "cursor-pointer hover:brightness-125 hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]"
+        isSelectable && "cursor-pointer hover:brightness-125"
       )}
       onClick={isSelectable ? onClick : undefined}
       data-cy="hex"
@@ -45,6 +45,7 @@ export function HexTile({ hex, isSelectable, onClick }: HexTileProps) {
       data-resource={hex.resource}
       data-token={hex.numberToken ?? undefined}
       data-image-failed={imageFailed || undefined}
+      data-legal-target={isSelectable ? 'true' : undefined}
     >
       {!imageFailed && (
         <clipPath id={clipId}>
@@ -83,6 +84,20 @@ export function HexTile({ hex, isSelectable, onClick }: HexTileProps) {
           !isSelectable && "hover:opacity-90 cursor-pointer"
         )}
       />
+      {/* A legal robber destination, marked in the same language as buildable nodes and
+          edges so "you may click this" reads identically everywhere on the board. */}
+      {isSelectable && (
+        <polygon
+          points={POLYGON_POINTS}
+          fill="none"
+          stroke="#fbbf24"
+          strokeWidth="4"
+          strokeLinejoin="round"
+          className="legal-target-pulse pointer-events-none"
+          data-cy="legal-hex-marker"
+        />
+      )}
+
       {hex.resource !== 'desert' && (
         <g className="pointer-events-none">
           <circle r="16" fill="navajowhite" className="opacity-90 shadow-sm" />

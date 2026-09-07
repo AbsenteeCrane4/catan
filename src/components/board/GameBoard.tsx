@@ -12,16 +12,34 @@ interface GameBoardProps {
   state: GameStateView;
   pendingRoads?: [string, string][];
   isMovingRobber?: boolean;
+  /**
+   * What the player is currently placing, or null when nothing is armed. With nothing
+   * armed the board is inert — every affordance below is driven by this plus the legal
+   * target sets, which come from `buildLegality`.
+   */
+  targetKind?: 'settlement' | 'city' | 'road' | null;
+  /** Node ids the reducer would accept for `targetKind`. */
+  legalNodes?: ReadonlySet<string>;
+  /** Edge ids the reducer would accept for `targetKind`. */
+  legalEdges?: ReadonlySet<string>;
+  /** The viewing player's colour, used for every placement preview. */
+  previewColor?: PlayerColor;
   onHexClick?: (hexId: string) => void;
   onBuildSettlement: (nodeId: string) => void;
   onBuildRoad: (nodeId1: string, nodeId2: string) => void;
   onUpgradeSettlement: (nodeId: string) => void;
 }
 
+const NO_TARGETS: ReadonlySet<string> = new Set();
+
 export function GameBoard({ 
   state: { hexes, nodes, settlements, roads, harbours, robberHexId, players },
   pendingRoads = [],
   isMovingRobber,
+  targetKind = null,
+  legalNodes = NO_TARGETS,
+  legalEdges = NO_TARGETS,
+  previewColor,
   onHexClick,
   onBuildSettlement,
   onBuildRoad,
@@ -47,6 +65,10 @@ export function GameBoard({
     const minY = Math.min(...ys) - pad;
     return { minX, minY, w: Math.max(...xs) + pad - minX, h: Math.max(...ys) + pad - minY };
   }, [nodes]);
+
+  // Nodes only accept clicks while a node-shaped piece is armed; a road mode must not
+  // make settlement spots clickable.
+  const isNodeMode = targetKind === 'settlement' || targetKind === 'city';
 
   const robberHex = hexes.find(h => h.id === robberHexId);
 
@@ -97,8 +119,16 @@ export function GameBoard({
 
         {robberPos && <Robber x={robberPos.x} y={robberPos.y} />}
         
-        <RoadLayer nodes={nodes} roads={roads} pendingRoads={pendingRoads} playerColors={playerColors} onBuildRoad={onBuildRoad} />
-        
+        <RoadLayer
+          nodes={nodes}
+          roads={roads}
+          pendingRoads={pendingRoads}
+          playerColors={playerColors}
+          legalEdges={targetKind === 'road' ? legalEdges : undefined}
+          previewColor={previewColor}
+          onBuildRoad={onBuildRoad}
+        />
+
         <g id="node-layer">
           {nodes.map(node => (
             <SettlementNode 
@@ -106,8 +136,12 @@ export function GameBoard({
               node={node}
               owner={settlements[node.id]}
               ownerColor={settlements[node.id] ? playerColors[settlements[node.id].playerId] : undefined}
-              onBuild={() => onBuildSettlement(node.id)}
-              onUpgrade={() => setPendingUpgradeNode(node.id)} 
+              isLegalTarget={isNodeMode && legalNodes.has(node.id)}
+              previewKind={targetKind === 'city' ? 'city' : 'settlement'}
+              previewColor={previewColor}
+              onSelect={() =>
+                targetKind === 'city' ? setPendingUpgradeNode(node.id) : onBuildSettlement(node.id)
+              }
             />
           ))}
         </g>

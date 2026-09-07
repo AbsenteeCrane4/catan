@@ -50,6 +50,25 @@ export const RESOURCE_CARD_IMAGES: Record<ResourceType, string> = {
   ore: HEX_TILE_IMAGES.ore,
 };
 
+/**
+ * What each buildable item costs. The single source of truth for the cost the reducer
+ * deducts and the cost the build panel draws — they used to be separate literals in
+ * each command handler.
+ */
+export const BUILD_COSTS = {
+  road: { wood: 1, brick: 1 },
+  settlement: { wood: 1, brick: 1, sheep: 1, wheat: 1 },
+  city: { ore: 3, wheat: 2 },
+  devCard: { sheep: 1, wheat: 1, ore: 1 },
+} as const satisfies Record<string, Partial<Record<ResourceType, number>>>;
+
+/**
+ * Pieces in a player's supply in the physical game. The reducer does not track a supply
+ * today, so these bound what the UI offers rather than what the reducer accepts — see
+ * the note on `canBuild` in helpers/buildLegality.ts.
+ */
+export const PIECE_LIMITS = { road: 15, settlement: 5, city: 4 } as const;
+
 export const PLAYER_COLORS: PlayerColor[] = ['red', 'blue', 'white', 'orange', 'green', 'brown', 'purple'];
 
 /**

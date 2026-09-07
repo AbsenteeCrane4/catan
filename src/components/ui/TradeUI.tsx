@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { playerName } from "@/lib/game/helpers/playerName";
 import { ResourceType, TradeOffer, PlayerView, RevealedPlayerView } from '@/types/catan';
-import { BookUp } from 'lucide-react';
 import { RESOURCE_COLORS } from '@/lib/constants';
 
 const RESOURCES: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
@@ -23,7 +22,6 @@ interface TradeUIProps {
   onProposeTrade: (offer: TradeOffer) => void;
   onAcceptTrade: () => void;
   onCancelTrade: () => void;
-  onBuyDevCard: () => void;
 }
 
 // Helper to determine the best ratio based on owned harbors
@@ -44,7 +42,6 @@ export function TradeUI({
   onProposeTrade,
   onAcceptTrade,
   onCancelTrade,
-  onBuyDevCard
 }: TradeUIProps) {
   const isMyTurn = localPlayerId === currentPlayerIndex;
 
@@ -96,7 +93,6 @@ export function TradeUI({
   const canTradeWithBank = validOfferRes && validReqRes;
 
   // Check if player can afford a Dev Card (1 Sheep, 1 Wheat, 1 Ore)
-  const canAffordDevCard = localPlayer.resources.sheep >= 1 && localPlayer.resources.wheat >= 1 && localPlayer.resources.ore >= 1;
 
   // --- VIEW 1: Someone else has proposed a trade ---
   if (currentTradeOffer) {
@@ -215,15 +211,10 @@ export function TradeUI({
           </button>
         )}
 
-        <div className="h-[1px] bg-slate-700 w-full my-1" />
-        <button 
-          onClick={onBuyDevCard}
-          disabled={!canAffordDevCard}
-          className="w-full bg-purple-600/20 hover:bg-purple-600/40 disabled:opacity-30 disabled:hover:bg-purple-600/20 text-purple-300 py-2 rounded text-[10px] font-bold border border-purple-500/50 transition-all flex items-center justify-center gap-2"
-        >
-          <BookUp size={14} /> 
-          Buy Dev Card (1🐑, 1🌾, 1🪨)
-        </button>
+        {/* Buying a development card lives in the build panel, with every other build
+            action. A second button here only checked affordability, so it would offer a
+            purchase the panel had already ruled out — before the dice, or with an empty
+            deck. */}
       </div>
     </div>
   );

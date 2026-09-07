@@ -44,7 +44,7 @@ export function PlayerSidebar({
   const largestArmyHolder = players.find(p => p.largestArmy);
 
   return (
-    <aside className="w-72 bg-slate-800/90 backdrop-blur border-r border-slate-700 p-4 flex flex-col gap-4 min-h-0">
+    <aside className="flex min-h-0 flex-1 flex-col gap-4 p-3">
 
       {/* --- TURN CONTROLS SECTION --- */}
       <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-4 mb-2 shrink-0">

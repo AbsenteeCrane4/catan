@@ -1,6 +1,7 @@
 import { CommandHandler } from "./types";
-import { requireCurrentPlayer } from "@/lib/game/helpers/guards";
+import { requireCurrentPlayer, withLog } from "@/lib/game/helpers/guards";
 import { isValidRoadPlacement } from "@/lib/game/helpers/board";
+import { canAfford, edgeId, payCostFor } from "@/lib/game/helpers/buildLegality";
 import { evaluateLongestRoad } from "@/lib/game/helpers/longestRoad";
 import { nameOf } from "@/lib/game/helpers/playerName";
 
@@ -10,19 +11,23 @@ export const buildRoad: CommandHandler<'BUILD_ROAD'> = (state, action) => {
   const turnRejection = requireCurrentPlayer(state, playerId, "It's not your turn!");
   if (turnRejection) return turnRejection;
   if (state.phase !== 'main' && state.setupActionRequired !== 'road') {
-    return { ...state, gameLog: ["You must build a settlement first!", ...state.gameLog] };
+    return withLog(state, "You must build a settlement first!");
   }
 
-  const roadId = [nodeId1, nodeId2].sort().join('-');
+  const roadId = edgeId(nodeId1, nodeId2);
   if (state.roads[roadId]) return state;
 
-  if (!isValidRoadPlacement(nodeId1, nodeId2, playerId, state)) return { ...state, gameLog: ["Road must connect!", ...state.gameLog] };
+  // The same predicate the build panel and the board's edge highlighting call, so a
+  // highlighted edge is by construction an edge this handler accepts.
+  if (!isValidRoadPlacement(nodeId1, nodeId2, playerId, state)) {
+    return withLog(state, "Road must connect!");
+  }
 
   const isInitial = state.phase !== 'main';
   const player = state.players[playerId];
 
-  if (!isInitial && (player.resources.wood < 1 || player.resources.brick < 1)) {
-    return { ...state, gameLog: ["Not enough resources!", ...state.gameLog] };
+  if (!isInitial && !canAfford(player.resources, 'road')) {
+    return withLog(state, "Not enough resources!");
   }
 
   // Handle Snake Draft Turn Advance
@@ -50,7 +55,7 @@ export const buildRoad: CommandHandler<'BUILD_ROAD'> = (state, action) => {
 
   const updatedPlayers = state.players.map(p => p.id === playerId ? {
     ...p,
-    resources: isInitial ? p.resources : { ...p.resources, wood: p.resources.wood - 1, brick: p.resources.brick - 1 }
+    resources: isInitial ? p.resources : payCostFor(p.resources, 'road')
   } : p);
 
   // 3. Create draft state

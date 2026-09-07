@@ -1,6 +1,6 @@
 import { CommandHandler } from "./types";
-import { requireCurrentPlayer } from "@/lib/game/helpers/guards";
-import { getAdjacentNodeIds, isNodeConnectedToPlayerRoad } from "@/lib/game/helpers/board";
+import { requireCurrentPlayer, withLog } from "@/lib/game/helpers/guards";
+import { canAfford, payCostFor, settlementBlockerAt } from "@/lib/game/helpers/buildLegality";
 import { evaluateLongestRoad } from "@/lib/game/helpers/longestRoad";
 import { nameOf } from "@/lib/game/helpers/playerName";
 
@@ -10,23 +10,20 @@ export const buildSettlement: CommandHandler<'BUILD_SETTLEMENT'> = (state, actio
   const turnRejection = requireCurrentPlayer(state, playerId, "It's not your turn!");
   if (turnRejection) return turnRejection;
   if (state.phase !== 'main' && state.setupActionRequired !== 'settlement') {
-    return { ...state, gameLog: ["You must build a road right now!", ...state.gameLog] };
+    return withLog(state, "You must build a road right now!");
   }
-  if (state.settlements[nodeId]) return state;
 
-  const neighbors = getAdjacentNodeIds(nodeId, state.nodes);
-  if (neighbors.some(id => state.settlements[id])) {
-    return { ...state, gameLog: ["Too close to another settlement!", ...state.gameLog] };
-  }
+  // The placement rules themselves live in buildLegality so the build panel and the
+  // board highlight exactly what this handler will accept.
+  const spotBlocker = settlementBlockerAt(state, playerId, nodeId);
+  if (spotBlocker === 'occupied') return state;
+  if (spotBlocker === 'too-close') return withLog(state, "Too close to another settlement!");
+  if (spotBlocker === 'unconnected') return withLog(state, "Must connect to a road!");
 
   const isInitial = state.phase !== 'main';
-  if (!isInitial && !isNodeConnectedToPlayerRoad(nodeId, state.roads, playerId)) {
-    return { ...state, gameLog: ["Must connect to a road!", ...state.gameLog] };
-  }
-
   const player = state.players[playerId];
-  if (!isInitial && (player.resources.wood < 1 || player.resources.brick < 1 || player.resources.wheat < 1 || player.resources.sheep < 1)) {
-    return { ...state, gameLog: ["Not enough resources!", ...state.gameLog] };
+  if (!isInitial && !canAfford(player.resources, 'settlement')) {
+    return withLog(state, "Not enough resources!");
   }
 
   // Clone players for updates
@@ -34,10 +31,7 @@ export const buildSettlement: CommandHandler<'BUILD_SETTLEMENT'> = (state, actio
 
   // Pay for settlement (if in main game)
   if (!isInitial) {
-    updatedPlayers[playerId].resources.wood -= 1;
-    updatedPlayers[playerId].resources.brick -= 1;
-    updatedPlayers[playerId].resources.wheat -= 1;
-    updatedPlayers[playerId].resources.sheep -= 1;
+    updatedPlayers[playerId].resources = payCostFor(updatedPlayers[playerId].resources, 'settlement');
   }
 
   // Give starting resources if this is Setup Phase 2
