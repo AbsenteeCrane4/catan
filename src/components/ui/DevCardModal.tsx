@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ResourceType, DevelopmentCardType, AnyCardArgs } from '@/types/catan';
 import { RESOURCE_COLORS } from '@/lib/constants';
+import { devCardName } from '@/lib/game/helpers/devCardInfo';
 import { Layers, X } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -9,13 +10,6 @@ interface DevCardModalProps {
   onClose: () => void;
   onSubmit: (cardArgs: AnyCardArgs) => void;
 }
-
-const formatCardName = (type: DevelopmentCardType) => {
-  const names: Record<string, string> = {
-    knight: 'Knight', victoryPoint: '+1 VP', roadBuilding: 'Road Bldg', yearOfPlenty: 'Yr of Plenty', monopoly: 'Monopoly'
-  };
-  return names[type] || type;
-};
 
 export function DevCardModal({ cardType, onClose, onSubmit }: DevCardModalProps) {
   const [res1, setRes1] = useState<ResourceType | ''>('');
@@ -43,7 +37,7 @@ export function DevCardModal({ cardType, onClose, onSubmit }: DevCardModalProps)
         
         <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
           <Layers className="text-purple-400"/> 
-          Play {formatCardName(cardType)}
+          Play {devCardName(cardType)}
         </h2>
 
         {/* Monopoly UI */}

@@ -29,6 +29,27 @@ export const BOARD_BACKGROUND_IMAGE = '/images/sea.png';
 
 export const RESOURCE_TYPES: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
 
+export const RESOURCE_LABELS: Record<ResourceType, string> = {
+  wood: 'Wood',
+  brick: 'Brick',
+  sheep: 'Sheep',
+  wheat: 'Wheat',
+  ore: 'Ore',
+};
+
+/**
+ * Card faces for the five resources, reusing the terrain art the board already ships.
+ * The source images are hexes with transparent corners, so a card face has to crop into
+ * the illustrated middle rather than letterbox the whole hex — see `ResourceCard`.
+ */
+export const RESOURCE_CARD_IMAGES: Record<ResourceType, string> = {
+  wood: HEX_TILE_IMAGES.wood,
+  brick: HEX_TILE_IMAGES.brick,
+  sheep: HEX_TILE_IMAGES.sheep,
+  wheat: HEX_TILE_IMAGES.wheat,
+  ore: HEX_TILE_IMAGES.ore,
+};
+
 export const PLAYER_COLORS: PlayerColor[] = ['red', 'blue', 'white', 'orange', 'green', 'brown', 'purple'];
 
 /**

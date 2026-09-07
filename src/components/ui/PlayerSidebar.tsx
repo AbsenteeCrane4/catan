@@ -1,13 +1,12 @@
-import { useState } from 'react';
 import { playerName } from "@/lib/game/helpers/playerName";
-import { PlayerView, ResourceType, DevelopmentCardType, AnyCardArgs } from "@/types/catan";
+import { PlayerView, ResourceType } from "@/types/catan";
 import { isRevealed } from "@/lib/game/helpers/playerView";
+import { devCardName } from "@/lib/game/helpers/devCardInfo";
 import { RESOURCE_COLORS } from "@/lib/constants";
-import { Users, Dice5, ChevronRight, Layers, Lock, Play, Shield } from "lucide-react";
+import { Users, Dice5, ChevronRight, Layers, Shield } from "lucide-react";
 import { clsx } from "clsx";
 import { DiceRoll } from "./DiceRoll"; // Import your animation component
 import { Road } from "./Road"; // Import the Road icon component
-import { DevCardModal } from "./DevCardModal";
 
 interface Props {
   players: PlayerView[];
@@ -16,11 +15,8 @@ interface Props {
   myPlayerIndex: number | null;
   diceRoll: number | null;
   longestRoad: { playerId: number | null; length: number };
-  hasPlayedDevCardThisTurn: boolean;
   onRoll: () => void;
   onEndTurn: () => void;
-  onPlayDevCard: (cardType: DevelopmentCardType, cardArgs?: AnyCardArgs) => void;
-  onInitiateMapCard: (cardType: 'roadBuilding') => void;
 }
 
 const playerColors = {
@@ -33,61 +29,29 @@ const playerColors = {
   purple: 'bg-purple-700',
 };
 
-// Helper to format dev card names cleanly
-const formatCardName = (type: DevelopmentCardType) => {
-  const names: Record<string, string> = {
-    knight: 'Knight', victoryPoint: '+1 VP', roadBuilding: 'Road Bldg', yearOfPlenty: 'Yr of Plenty', monopoly: 'Monopoly'
-  };
-  return names[type] || type;
-};
-
-export function PlayerSidebar({ 
-  players, 
-  currentPlayerIndex, 
-  myPlayerIndex, 
-  diceRoll, 
+export function PlayerSidebar({
+  players,
+  currentPlayerIndex,
+  myPlayerIndex,
+  diceRoll,
   longestRoad,
-  hasPlayedDevCardThisTurn,
-  onRoll, 
+  onRoll,
   onEndTurn,
-  onPlayDevCard,
-  onInitiateMapCard
 }: Props) {
   const isMyTurn = currentPlayerIndex === myPlayerIndex;
-
-  // Track which card is waiting for user input
-  const [activeCardPrompt, setActiveCardPrompt] = useState<DevelopmentCardType | null>(null);
 
   // Derive the current holder of the Largest Army
   const largestArmyHolder = players.find(p => p.largestArmy);
 
-  const handleInitiatePlay = (card: DevelopmentCardType) => {
-    if (card === 'monopoly' || card === 'yearOfPlenty') {
-      setActiveCardPrompt(card);
-    } else if (card === 'roadBuilding') {
-      onInitiateMapCard(card);
-    } else {
-      onPlayDevCard(card);
-    }
-  };
-
-  const handleModalSubmit = (cardArgs: AnyCardArgs) => {
-    if (activeCardPrompt) {
-      onPlayDevCard(activeCardPrompt, cardArgs);
-      setActiveCardPrompt(null);
-    }
-  };
-
   return (
-  <>
     <aside className="w-72 bg-slate-800/90 backdrop-blur border-r border-slate-700 p-4 flex flex-col gap-4 min-h-0">
-      
+
       {/* --- TURN CONTROLS SECTION --- */}
       <div className="bg-slate-900/50 p-4 rounded-xl border border-white/5 flex flex-col items-center gap-4 mb-2 shrink-0">
         <h3 data-cy="turn-indicator" className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
           {isMyTurn ? "Your Turn" : `${playerName(players[currentPlayerIndex], currentPlayerIndex)}'s Turn`}
         </h3>
-        
+
         {/* The Dice Animation moved here */}
         <div className="h-20 flex items-center justify-center">
           {diceRoll ? (
@@ -130,7 +94,9 @@ export function PlayerSidebar({
           const isMe = idx === myPlayerIndex;
           // Non-null only where the server chose to reveal: our own seat, or everyone
           // once the game is over. Everyone else is counts, and that is all we have.
-          const hand = isRevealed(p) ? p : null;
+          // Our own seat is deliberately excluded here: those cards are the bottom HUD's
+          // job now, and drawing them twice leaves two hands to keep in step.
+          const hand = !isMe && isRevealed(p) ? p : null;
 
           return (
             <div
@@ -140,8 +106,8 @@ export function PlayerSidebar({
               data-player-color={p.color}
               className={clsx(
                 "p-3 rounded-lg border-2 transition-all duration-300 relative",
-                isMe 
-                  ? "border-amber-400 bg-slate-700 shadow-lg" 
+                isMe
+                  ? "border-amber-400 bg-slate-700 shadow-lg"
                   : "border-transparent bg-slate-800/50"
               )}
             >
@@ -174,8 +140,19 @@ export function PlayerSidebar({
               </div>
 
               {/* Resources. Types only where the server sent them; everyone else is a
-                  face-down count, because a count is genuinely all this client knows. */}
-              {hand ? (
+                  face-down count, because a count is genuinely all this client knows.
+                  Our own row carries the total only — the cards themselves are below. */}
+              {isMe ? (
+                <div
+                  data-cy="own-hand-summary"
+                  className="flex items-center gap-2 bg-slate-900/50 p-2 rounded border border-white/5 mb-2"
+                >
+                  <span className="text-[10px] font-bold text-slate-300">{p.resourceCount}</span>
+                  <span className="text-[9px] uppercase tracking-wider text-slate-500">
+                    {p.resourceCount === 1 ? 'card in hand' : 'cards in hand'}
+                  </span>
+                </div>
+              ) : hand ? (
                 <div data-cy="own-resources" className="grid grid-cols-5 gap-1 text-[10px] text-slate-300 mb-2">
                   {Object.entries(hand.resources).map(([res, count]) => (
                     <div
@@ -208,37 +185,18 @@ export function PlayerSidebar({
                 </div>
               )}
 
-              {/* Dev card faces, on the same terms as resources: rendered whenever the
-                  server revealed them, which at game over includes opponents. Only the
-                  seat holding them ever gets a Play control. */}
+              {/* An opponent's dev card faces, once the game is over and the server has
+                  revealed them. Nothing is played from here — the only hand with play
+                  controls is the viewer's own, in the bottom HUD. */}
               {hand && (hand.devCards.playable.length > 0 || hand.devCards.boughtThisTurn.length > 0) && (
                 <div className="mt-2 pt-2 border-t border-slate-700/50 flex flex-col gap-1">
                   <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-1">
-                    {isMe ? 'Your Dev Cards' : 'Dev Cards'}
+                    Dev Cards
                   </span>
 
-                  {/* Playable Cards */}
-                  {hand.devCards.playable.map((card, i) => (
-                    <div key={`playable-${i}`} data-cy="dev-card" className="flex justify-between items-center bg-slate-900/50 p-1.5 rounded border border-purple-500/20">
-                      <span className="text-[10px] text-purple-300 font-bold">{formatCardName(card)}</span>
-                      {isMe && card !== 'victoryPoint' && (
-                        <button
-                          onClick={() => handleInitiatePlay(card)}
-                          disabled={!isMyTurn || hasPlayedDevCardThisTurn}
-                          data-cy="play-dev-card-btn"
-                          className="bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1 transition-all"
-                        >
-                          <Play size={8} /> Play
-                        </button>
-                      )}
-                    </div>
-                  ))}
-
-                  {/* Bought This Turn (Locked) */}
-                  {hand.devCards.boughtThisTurn.map((card, i) => (
-                    <div key={`locked-${i}`} data-cy="dev-card-locked" className="flex justify-between items-center bg-slate-900/30 p-1.5 rounded border border-slate-700 opacity-60">
-                      <span className="text-[10px] text-slate-400 line-through">{formatCardName(card)}</span>
-                      <Lock size={10} className="text-slate-500" />
+                  {[...hand.devCards.playable, ...hand.devCards.boughtThisTurn].map((card, i) => (
+                    <div key={`revealed-${i}`} data-cy="dev-card" className="flex justify-between items-center bg-slate-900/50 p-1.5 rounded border border-purple-500/20">
+                      <span className="text-[10px] text-purple-300 font-bold">{devCardName(card)}</span>
                     </div>
                   ))}
                 </div>
@@ -262,15 +220,6 @@ export function PlayerSidebar({
           </div>
         )}
       </div>
-    </aside> 
-    
-    {activeCardPrompt && (
-      <DevCardModal 
-        cardType={activeCardPrompt} 
-        onClose={() => setActiveCardPrompt(null)} 
-        onSubmit={handleModalSubmit}
-      />
-    )}
-  </>
+    </aside>
   );
 }

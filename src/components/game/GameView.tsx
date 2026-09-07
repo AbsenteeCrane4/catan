@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { GameAction, GameStateView } from '@/types/catan';
+import { AnyCardArgs, DevelopmentCardType, GameAction, GameStateView } from '@/types/catan';
 import { ownHand } from '@/lib/game/helpers/playerView';
 import { GameBoard } from '@/components/board/GameBoard';
 import { PlayerSidebar } from '@/components/ui/PlayerSidebar';
+import { PlayerHand } from '@/components/hand/PlayerHand';
 import { TradeUI } from '@/components/ui/TradeUI';
 import { StealModal } from '@/components/ui/StealModal';
 import { GameOverModal } from '@/components/ui/GameOverModal';
@@ -62,101 +63,112 @@ export function GameView({ state, performAction, onLeave }: GameViewProps) {
     }
   };
 
+  const playDevCard = (cardType: DevelopmentCardType, cardArgs?: AnyCardArgs) => {
+    if (myPlayerIndex === null) return;
+    performAction({ type: 'PLAY_DEV_CARD', payload: { playerId: myPlayerIndex, cardType, cardArgs } });
+  };
+
+  const initiateMapCard = (cardType: 'roadBuilding') => {
+    setActiveMapAction(cardType);
+    if (cardType === 'roadBuilding') setPendingRoadBuildingRoads([]);
+  };
+
   return (
-    <div className="flex h-screen bg-slate-900 text-white">
-      <PlayerSidebar
-        players={state.players}
-        currentPlayerIndex={state.currentPlayerIndex}
-        myPlayerIndex={myPlayerIndex}
-        diceRoll={state.diceRoll}
-        longestRoad={state.longestRoad}
-        onRoll={() => performAction({ type: 'ROLL_DICE' })}
-        onEndTurn={() => performAction({ type: 'END_TURN' })}
-        hasPlayedDevCardThisTurn={state.hasPlayedDevCardThisTurn}
-        onPlayDevCard={(cardType, cardArgs) => {
-          if (myPlayerIndex === null) return;
-          performAction({ type: 'PLAY_DEV_CARD', payload: { playerId: myPlayerIndex, cardType, cardArgs } });
-        }}
-        onInitiateMapCard={(cardType) => {
-          setActiveMapAction(cardType);
-          if (cardType === 'roadBuilding') setPendingRoadBuildingRoads([]);
-        }}
-      />
-
-      {/* Center: The Map */}
-      <main className="flex-1 relative flex items-center justify-center overflow-hidden">
-        {activeMapAction === 'roadBuilding' && (
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-full font-bold shadow-xl shadow-blue-900/50 animate-pulse z-20 border border-blue-400">
-            {pendingRoadBuildingRoads.length === 0
-              ? "Select an edge for your 1st free road"
-              : "Select an edge for your 2nd free road"}
-          </div>
-        )}
-
-        {isMovingRobber && (
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-6 py-3 rounded-full font-bold shadow-xl shadow-purple-900/50 animate-pulse z-20 border border-purple-400">
-            Select a tile to place the Robber
-          </div>
-        )}
-
-        <GameBoard
-          state={state}
-          pendingRoads={pendingRoadBuildingRoads}
-          isMovingRobber={isMovingRobber}
-          onHexClick={handleHexClick}
-          onBuildSettlement={(nodeId) => {
-            if (myPlayerIndex === null) return;
-            performAction({ type: 'BUILD_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex } });
-          }}
-          onBuildRoad={handleEdgeClick}
-          onUpgradeSettlement={(nodeId) => {
-            if (myPlayerIndex === null) return;
-            performAction({ type: 'UPGRADE_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex } });
-          }}
+    <div className="flex h-screen flex-col bg-slate-900 text-white">
+      <div className="flex min-h-0 flex-1">
+        <PlayerSidebar
+          players={state.players}
+          currentPlayerIndex={state.currentPlayerIndex}
+          myPlayerIndex={myPlayerIndex}
+          diceRoll={state.diceRoll}
+          longestRoad={state.longestRoad}
+          onRoll={() => performAction({ type: 'ROLL_DICE' })}
+          onEndTurn={() => performAction({ type: 'END_TURN' })}
         />
-      </main>
 
-      {/* Right Sidebar: Trading & Logs */}
-      <aside className="w-80 bg-slate-900/50 border-l border-slate-800 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-800 bg-slate-900/30">
-          {myPlayerIndex !== null && myHand ? (
-            <TradeUI
-              localPlayerId={myPlayerIndex}
-              currentPlayerIndex={state.currentPlayerIndex}
-              localPlayer={myHand}
-              players={state.players}
-              currentTradeOffer={state.currentTradeOffer}
-              onTradeWithBank={(offerResource, requestResource) => performAction({ type: 'TRADE_WITH_BANK', payload: { playerId: myPlayerIndex, offerResource, requestResource } })}
-              onProposeTrade={(offer) => performAction({ type: 'PROPOSE_TRADE', payload: { offer } })}
-              onAcceptTrade={() => performAction({ type: 'ACCEPT_TRADE', payload: { acceptorId: myPlayerIndex } })}
-              onCancelTrade={() => performAction({ type: 'CANCEL_TRADE' })}
-              onBuyDevCard={() => performAction({ type: 'BUY_DEV_CARD', payload: { playerId: myPlayerIndex } })}
-            />
-          ) : (
-            <div data-cy="spectator-panel" className="p-4 text-center border border-dashed border-slate-700 rounded-xl">
-              <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-3">You are spectating</p>
-              <button
-                onClick={onLeave}
-                data-cy="stop-spectating-btn"
-                className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-xs font-bold transition-colors"
-              >
-                Leave
-              </button>
+        {/* Center: The Map */}
+        <main className="flex-1 relative flex items-center justify-center overflow-hidden">
+          {activeMapAction === 'roadBuilding' && (
+            <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-full font-bold shadow-xl shadow-blue-900/50 animate-pulse z-20 border border-blue-400">
+              {pendingRoadBuildingRoads.length === 0
+                ? "Select an edge for your 1st free road"
+                : "Select an edge for your 2nd free road"}
             </div>
           )}
-        </div>
 
-        <div className="flex-1 p-4 flex flex-col overflow-hidden">
-          <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-4">Event Log</h2>
-          <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-            {[...state.gameLog].map((log, i) => (
-              <div key={i} className="text-[10px] font-mono text-slate-500 border-l border-slate-800 pl-2 leading-relaxed animate-in fade-in slide-in-from-left-1">
-                <span className="text-slate-700">#</span> {log}
+          {isMovingRobber && (
+            <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-6 py-3 rounded-full font-bold shadow-xl shadow-purple-900/50 animate-pulse z-20 border border-purple-400">
+              Select a tile to place the Robber
+            </div>
+          )}
+
+          <GameBoard
+            state={state}
+            pendingRoads={pendingRoadBuildingRoads}
+            isMovingRobber={isMovingRobber}
+            onHexClick={handleHexClick}
+            onBuildSettlement={(nodeId) => {
+              if (myPlayerIndex === null) return;
+              performAction({ type: 'BUILD_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex } });
+            }}
+            onBuildRoad={handleEdgeClick}
+            onUpgradeSettlement={(nodeId) => {
+              if (myPlayerIndex === null) return;
+              performAction({ type: 'UPGRADE_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex } });
+            }}
+          />
+        </main>
+
+        {/* Right Sidebar: Trading & Logs */}
+        <aside className="w-80 bg-slate-900/50 border-l border-slate-800 flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-slate-800 bg-slate-900/30">
+            {myPlayerIndex !== null && myHand ? (
+              <TradeUI
+                localPlayerId={myPlayerIndex}
+                currentPlayerIndex={state.currentPlayerIndex}
+                localPlayer={myHand}
+                players={state.players}
+                currentTradeOffer={state.currentTradeOffer}
+                onTradeWithBank={(offerResource, requestResource) => performAction({ type: 'TRADE_WITH_BANK', payload: { playerId: myPlayerIndex, offerResource, requestResource } })}
+                onProposeTrade={(offer) => performAction({ type: 'PROPOSE_TRADE', payload: { offer } })}
+                onAcceptTrade={() => performAction({ type: 'ACCEPT_TRADE', payload: { acceptorId: myPlayerIndex } })}
+                onCancelTrade={() => performAction({ type: 'CANCEL_TRADE' })}
+                onBuyDevCard={() => performAction({ type: 'BUY_DEV_CARD', payload: { playerId: myPlayerIndex } })}
+              />
+            ) : (
+              <div data-cy="spectator-panel" className="p-4 text-center border border-dashed border-slate-700 rounded-xl">
+                <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-3">You are spectating</p>
+                <button
+                  onClick={onLeave}
+                  data-cy="stop-spectating-btn"
+                  className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-xs font-bold transition-colors"
+                >
+                  Leave
+                </button>
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      </aside>
+
+          <div className="flex-1 p-4 flex flex-col overflow-hidden">
+            <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-4">Event Log</h2>
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+              {[...state.gameLog].map((log, i) => (
+                <div key={i} className="text-[10px] font-mono text-slate-500 border-l border-slate-800 pl-2 leading-relaxed animate-in fade-in slide-in-from-left-1">
+                  <span className="text-slate-700">#</span> {log}
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* The player's own cards: bottom-anchored, a sibling of the board row rather than
+          an overlay, so it can never cover the board it sits under. */}
+      <PlayerHand
+        state={state}
+        onPlayDevCard={playDevCard}
+        onInitiateMapCard={initiateMapCard}
+      />
 
       {isStealing && myPlayerIndex !== null && state.pendingRobberAction?.validVictims && (
         <StealModal
