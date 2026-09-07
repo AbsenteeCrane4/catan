@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { GameAction, GameState } from '@/types/catan';
+import { GameAction, GameStateView } from '@/types/catan';
+import { ownHand } from '@/lib/game/helpers/playerView';
 import { GameBoard } from '@/components/board/GameBoard';
 import { PlayerSidebar } from '@/components/ui/PlayerSidebar';
 import { TradeUI } from '@/components/ui/TradeUI';
@@ -9,14 +10,18 @@ import { StealModal } from '@/components/ui/StealModal';
 import { GameOverModal } from '@/components/ui/GameOverModal';
 
 interface GameViewProps {
-  state: GameState;
-  /** null for a spectator — someone who joined after start with no seat. */
-  myPlayerIndex: number | null;
+  state: GameStateView;
   performAction: (action: GameAction) => void;
   onLeave: () => void;
 }
 
-export function GameView({ state, myPlayerIndex, performAction, onLeave }: GameViewProps) {
+export function GameView({ state, performAction, onLeave }: GameViewProps) {
+  // The seat comes from the payload, not from a prop threaded down beside it. The same
+  // server function decides `viewerSeatIndex` and what to reveal, so the seat we render
+  // as "you" can never disagree with the hand we were sent. null = spectator.
+  const myPlayerIndex = state.viewerSeatIndex;
+  const myHand = ownHand(state);
+
   const [activeMapAction, setActiveMapAction] = useState<'none' | 'roadBuilding' | 'knight'>('none');
   const [pendingRoadBuildingRoads, setPendingRoadBuildingRoads] = useState<[string, string][]>([]);
 
@@ -114,11 +119,11 @@ export function GameView({ state, myPlayerIndex, performAction, onLeave }: GameV
       {/* Right Sidebar: Trading & Logs */}
       <aside className="w-80 bg-slate-900/50 border-l border-slate-800 flex flex-col overflow-hidden">
         <div className="p-4 border-b border-slate-800 bg-slate-900/30">
-          {myPlayerIndex !== null ? (
+          {myPlayerIndex !== null && myHand ? (
             <TradeUI
               localPlayerId={myPlayerIndex}
               currentPlayerIndex={state.currentPlayerIndex}
-              localPlayer={state.players[myPlayerIndex]}
+              localPlayer={myHand}
               players={state.players}
               currentTradeOffer={state.currentTradeOffer}
               onTradeWithBank={(offerResource, requestResource) => performAction({ type: 'TRADE_WITH_BANK', payload: { playerId: myPlayerIndex, offerResource, requestResource } })}

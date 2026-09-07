@@ -6,6 +6,7 @@ import { isValidGameId } from '@/lib/game-id';
 import { MAX_SOCKETS_PER_ROOM, RoomStore } from './rooms';
 import { normaliseGameId, roomKey } from './roomKey';
 import { isActionAllowedFor, withActor } from './actionGuards';
+import { redactStateFor } from './redact';
 
 /** What the server remembers about a live socket. Keyed by socket.id, cleared on disconnect. */
 interface SocketContext {
@@ -75,10 +76,22 @@ export function registerSocketHandlers(io: Server, store: RoomStore = new RoomSt
     }
   };
 
+  /**
+   * Per-socket, not to the room: each client gets a view redacted for *its* seat. Sending
+   * one shared payload to `roomKey(gameId)` would hand every hand and the whole dev-card
+   * deck to every listener, which no amount of client-side hiding can undo.
+   */
   const broadcastGame = (gameId: string) => {
     const room = store.get(gameId);
-    if (room?.game) {
-      io.to(roomKey(gameId)).emit('game-update', { type: 'SYNC_STATE', payload: room.game });
+    if (!room?.game) return;
+
+    for (const socketId of room.socketIds) {
+      const ctx = socketToRoom.get(socketId);
+      const seat = ctx ? store.seatFor(room, ctx.clientId) : undefined;
+      io.to(socketId).emit('game-update', {
+        type: 'SYNC_STATE',
+        payload: redactStateFor(room.game, seat?.seatIndex ?? null),
+      });
     }
   };
 
@@ -112,16 +125,20 @@ export function registerSocketHandlers(io: Server, store: RoomStore = new RoomSt
       const seat = store.seatFor(room, clientId);
       if (seat) seat.connected = true;
 
+      // Redacted on the way out, exactly like a broadcast — a reconnect must not be a
+      // way to ask for the unredacted state.
+      const view = room.game ? redactStateFor(room.game, seat?.seatIndex ?? null) : null;
+
       reply(ack, {
         ok: true,
         status: room.status,
         lobby: store.toSnapshot(room),
         seatIndex: seat?.seatIndex ?? null,
-        state: room.game,
+        state: view,
       });
 
       broadcastLobby(id);
-      if (room.game) socket.emit('game-update', { type: 'SYNC_STATE', payload: room.game });
+      if (view) socket.emit('game-update', { type: 'SYNC_STATE', payload: view });
     });
 
     socket.on('lobby:sit', (payload: { name?: string; color?: PlayerColor }, ack?: unknown) => {

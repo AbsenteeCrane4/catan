@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { playerName } from "@/lib/game/helpers/playerName";
-import { ResourceType, TradeOffer, Player } from '@/types/catan';
+import { ResourceType, TradeOffer, PlayerView, RevealedPlayerView } from '@/types/catan';
 import { BookUp } from 'lucide-react';
 import { RESOURCE_COLORS } from '@/lib/constants';
 
@@ -11,8 +11,13 @@ const RESOURCES: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
 interface TradeUIProps {
   localPlayerId: number;
   currentPlayerIndex: number;
-  localPlayer: Player;
-  players: Player[];
+  /**
+   * Revealed rather than a bare `PlayerView`: this panel spends the hand it is given
+   * (offer caps, the dev-card affordability check), so it needs the seat whose cards the
+   * server actually sent. `GameView` narrows with `ownHand` before rendering us.
+   */
+  localPlayer: RevealedPlayerView;
+  players: PlayerView[];
   currentTradeOffer: TradeOffer | null;
   onTradeWithBank: (offerResource: ResourceType, requestResource: ResourceType) => void;
   onProposeTrade: (offer: TradeOffer) => void;

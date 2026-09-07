@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { socket } from '@/lib/socket-client';
-import { GameAction, GameState, PlayerColor } from '@/types/catan';
+import { GameAction, GameStateView, PlayerColor } from '@/types/catan';
 import { Ack, LobbySnapshot, LobbyStateMessage } from '@/types/lobby';
 import { getClientId } from '@/lib/client-id';
 
@@ -8,7 +8,8 @@ interface EnterResponse {
   status: 'lobby' | 'playing';
   lobby: LobbySnapshot;
   seatIndex: number | null;
-  state: GameState | null;
+  /** Already redacted for this seat by the server — never a full `GameState`. */
+  state: GameStateView | null;
 }
 
 export interface GameError {
@@ -33,7 +34,10 @@ export function useMultiplayerGame(gameId: string) {
     typeof window === 'undefined' ? null : getClientId()
   );
   const [lobby, setLobby] = useState<LobbySnapshot | null>(null);
-  const [state, setState] = useState<GameState | null>(null);
+  // `GameStateView`, not `GameState`: the server redacts on the way out, so opponents
+  // arrive with `resources: null`. Typing this as `GameState` is how a hand leak reaches
+  // a component without the compiler noticing.
+  const [state, setState] = useState<GameStateView | null>(null);
   const [seatIndex, setSeatIndex] = useState<number | null>(null);
   const [lastError, setLastError] = useState<GameError | null>(null);
 
@@ -58,7 +62,7 @@ export function useMultiplayerGame(gameId: string) {
       setSeatIndex(yourSeatIndex);
     };
 
-    const handleGame = (message: { type: string; payload: GameState }) => {
+    const handleGame = (message: { type: string; payload: GameStateView }) => {
       if (message.type === 'SYNC_STATE') setState(message.payload);
     };
 

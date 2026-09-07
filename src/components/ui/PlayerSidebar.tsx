@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { playerName } from "@/lib/game/helpers/playerName";
-import { Player, ResourceType, DevelopmentCardType, AnyCardArgs } from "@/types/catan";
+import { PlayerView, ResourceType, DevelopmentCardType, AnyCardArgs } from "@/types/catan";
+import { isRevealed } from "@/lib/game/helpers/playerView";
 import { RESOURCE_COLORS } from "@/lib/constants";
 import { Users, Dice5, ChevronRight, Layers, Lock, Play, Shield } from "lucide-react";
 import { clsx } from "clsx";
@@ -9,7 +10,7 @@ import { Road } from "./Road"; // Import the Road icon component
 import { DevCardModal } from "./DevCardModal";
 
 interface Props {
-  players: Player[];
+  players: PlayerView[];
   currentPlayerIndex: number;
   /** null for a spectator — no seat is ever "you". */
   myPlayerIndex: number | null;
@@ -127,7 +128,9 @@ export function PlayerSidebar({
       <div className="space-y-3 flex-1 min-h-1 overflow-y-auto pr-1 ">
         {players.map((p, idx) => {
           const isMe = idx === myPlayerIndex;
-          const totalHiddenCards = (p.devCards?.playable?.length || 0) + (p.devCards?.boughtThisTurn?.length || 0);
+          // Non-null only where the server chose to reveal: our own seat, or everyone
+          // once the game is over. Everyone else is counts, and that is all we have.
+          const hand = isRevealed(p) ? p : null;
 
           return (
             <div
@@ -152,9 +155,12 @@ export function PlayerSidebar({
                 </span>
                 <div className="flex gap-1 items-center">
                   {/* Opponent Dev Card Count */}
-                  {!isMe && totalHiddenCards > 0 && (
-                    <span className="text-[10px] bg-purple-900/50 border border-purple-500/30 px-1.5 py-0.5 rounded flex items-center gap-1 text-purple-300">
-                      <Layers size={15} /> {totalHiddenCards}
+                  {!isMe && p.devCardCount > 0 && (
+                    <span
+                      data-cy="player-devcard-count"
+                      className="text-[10px] bg-purple-900/50 border border-purple-500/30 px-1.5 py-0.5 rounded flex items-center gap-1 text-purple-300"
+                    >
+                      <Layers size={15} /> {p.devCardCount}
                     </span>
                   )}
                   <span className="text-[10px] bg-slate-950 px-1 py-0.5 rounded text-slate-400 flex items-center gap-1">
@@ -167,29 +173,59 @@ export function PlayerSidebar({
                 </div>
               </div>
 
-              {/* Resources */}
-              <div className="grid grid-cols-5 gap-1 text-[10px] text-slate-300 mb-2">
-                {Object.entries(p.resources).map(([res, count]) => (
-                  <div key={res} className="flex flex-col items-center bg-slate-900/50 p-1 rounded border border-white/5">
-                    <div className="w-2 h-2 rounded-full mb-1" style={{ backgroundColor: RESOURCE_COLORS[res as ResourceType] }} />
-                    <span className={count > 0 ? "text-white font-bold" : "text-slate-600"}>{count}</span>
+              {/* Resources. Types only where the server sent them; everyone else is a
+                  face-down count, because a count is genuinely all this client knows. */}
+              {hand ? (
+                <div data-cy="own-resources" className="grid grid-cols-5 gap-1 text-[10px] text-slate-300 mb-2">
+                  {Object.entries(hand.resources).map(([res, count]) => (
+                    <div
+                      key={res}
+                      data-cy="own-resource"
+                      data-resource={res}
+                      className="flex flex-col items-center bg-slate-900/50 p-1 rounded border border-white/5"
+                    >
+                      <div className="w-2 h-2 rounded-full mb-1" style={{ backgroundColor: RESOURCE_COLORS[res as ResourceType] }} />
+                      <span className={count > 0 ? "text-white font-bold" : "text-slate-600"}>{count}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  data-cy="hidden-hand"
+                  className="flex items-center gap-2 bg-slate-900/50 p-2 rounded border border-white/5 mb-2"
+                >
+                  <div className="flex -space-x-2" aria-hidden>
+                    {Array.from({ length: Math.min(p.resourceCount, 5) }).map((_, i) => (
+                      <div key={i} className="w-3 h-4 rounded-[2px] bg-slate-700 border border-slate-600 shadow-sm" />
+                    ))}
                   </div>
-                ))}
-              </div>
+                  <span data-cy="hidden-resource-count" className="text-[10px] font-bold text-slate-300">
+                    {p.resourceCount}
+                  </span>
+                  <span className="text-[9px] uppercase tracking-wider text-slate-500">
+                    {p.resourceCount === 1 ? 'card' : 'cards'}
+                  </span>
+                </div>
+              )}
 
-              {/* LOCAL PLAYER DEV CARDS */}
-              {isMe && (p.devCards?.playable.length > 0 || p.devCards?.boughtThisTurn.length > 0) && (
+              {/* Dev card faces, on the same terms as resources: rendered whenever the
+                  server revealed them, which at game over includes opponents. Only the
+                  seat holding them ever gets a Play control. */}
+              {hand && (hand.devCards.playable.length > 0 || hand.devCards.boughtThisTurn.length > 0) && (
                 <div className="mt-2 pt-2 border-t border-slate-700/50 flex flex-col gap-1">
-                  <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-1">Your Dev Cards</span>
-                  
+                  <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider mb-1">
+                    {isMe ? 'Your Dev Cards' : 'Dev Cards'}
+                  </span>
+
                   {/* Playable Cards */}
-                  {p.devCards.playable.map((card, i) => (
-                    <div key={`playable-${i}`} className="flex justify-between items-center bg-slate-900/50 p-1.5 rounded border border-purple-500/20">
+                  {hand.devCards.playable.map((card, i) => (
+                    <div key={`playable-${i}`} data-cy="dev-card" className="flex justify-between items-center bg-slate-900/50 p-1.5 rounded border border-purple-500/20">
                       <span className="text-[10px] text-purple-300 font-bold">{formatCardName(card)}</span>
-                      {card !== 'victoryPoint' && (
+                      {isMe && card !== 'victoryPoint' && (
                         <button
                           onClick={() => handleInitiatePlay(card)}
                           disabled={!isMyTurn || hasPlayedDevCardThisTurn}
+                          data-cy="play-dev-card-btn"
                           className="bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white text-[9px] px-2 py-1 rounded flex items-center gap-1 transition-all"
                         >
                           <Play size={8} /> Play
@@ -199,8 +235,8 @@ export function PlayerSidebar({
                   ))}
 
                   {/* Bought This Turn (Locked) */}
-                  {p.devCards.boughtThisTurn.map((card, i) => (
-                    <div key={`locked-${i}`} className="flex justify-between items-center bg-slate-900/30 p-1.5 rounded border border-slate-700 opacity-60">
+                  {hand.devCards.boughtThisTurn.map((card, i) => (
+                    <div key={`locked-${i}`} data-cy="dev-card-locked" className="flex justify-between items-center bg-slate-900/30 p-1.5 rounded border border-slate-700 opacity-60">
                       <span className="text-[10px] text-slate-400 line-through">{formatCardName(card)}</span>
                       <Lock size={10} className="text-slate-500" />
                     </div>
