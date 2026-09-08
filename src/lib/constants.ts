@@ -85,6 +85,36 @@ export const PLAYER_COLOR_CLASSES: Record<PlayerColor, string> = {
   purple: 'bg-purple-700',
 };
 
+/**
+ * Painted-plastic shading per player colour, for the dimensional board pieces.
+ *
+ * A game piece needs more than one colour to read as a solid object: `top` catches the
+ * light, `base` is the lit face, `side` is the face turned away from it and `edge` is the
+ * contact line. Derived from `player.color` and never from seat index, per `CLAUDE.md`.
+ * These are inline SVG fills, so unlike `PLAYER_COLOR_CLASSES` they are invisible to
+ * Tailwind by design.
+ */
+export interface PieceShades {
+  top: string;
+  base: string;
+  side: string;
+  edge: string;
+}
+
+export const PLAYER_PIECE_SHADES: Record<PlayerColor, PieceShades> = {
+  red: { top: '#f4796a', base: '#d33f31', side: '#a02a1f', edge: '#5f1610' },
+  blue: { top: '#6ba6f5', base: '#2f74d8', side: '#1d4c95', edge: '#102b57' },
+  white: { top: '#ffffff', base: '#e4e8ee', side: '#b3bcca', edge: '#6b7280' },
+  orange: { top: '#ffbc63', base: '#e8892a', side: '#b25f12', edge: '#6a3607' },
+  green: { top: '#68cf85', base: '#2f9f52', side: '#1d7038', edge: '#0f3d1e' },
+  brown: { top: '#b07a48', base: '#7d4c26', side: '#573217', edge: '#2e1a0b' },
+  purple: { top: '#b184ef', base: '#7d47c9', side: '#552b8e', edge: '#2f1652' },
+};
+
+/** Falls back to white so an unexpected colour still draws a piece rather than nothing. */
+export const pieceShades = (color: PlayerColor | string | undefined): PieceShades =>
+  PLAYER_PIECE_SHADES[color as PlayerColor] ?? PLAYER_PIECE_SHADES.white;
+
 export const PLAYER_COLOR_LABELS: Record<PlayerColor, string> = {
   red: 'Red',
   blue: 'Blue',

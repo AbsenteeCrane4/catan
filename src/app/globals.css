@@ -65,3 +65,48 @@ body {
     opacity: 0.9;
   }
 }
+
+/**
+ * A piece being set down on the board (docs/DESIGN.md §30, issue #55).
+ *
+ * Applied to the sprite inside a billboard, never to the billboard itself — that
+ * element's transform is what stands the piece up, and an animation on `transform`
+ * would override it.
+ */
+@keyframes piece-drop {
+  0% { opacity: 0; transform: translateY(-16px) scale(0.85); }
+  70% { opacity: 1; transform: translateY(1px) scale(1.03); }
+  100% { opacity: 1; transform: none; }
+}
+
+.animate-piece-drop {
+  animation: piece-drop 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/** A road appearing. Opacity only: SVG strokes have no reliable transform box. */
+@keyframes piece-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-piece-fade {
+  animation: piece-fade 260ms ease-out;
+}
+
+/** The ghost piece under the pointer, held just off the board. */
+@keyframes piece-hover {
+  0%, 100% { transform: translateY(-2px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-piece-hover {
+  animation: piece-hover 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-piece-drop,
+  .animate-piece-fade,
+  .animate-piece-hover {
+    animation: none;
+  }
+}

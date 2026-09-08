@@ -228,7 +228,7 @@ export function GameView({ state, performAction, onLeave }: GameViewProps) {
         </div>
 
         {/* Center: The Map */}
-        <main className="flex-1 relative flex items-center justify-center overflow-hidden">
+        <main className="relative flex min-w-0 flex-1 overflow-hidden">
           {activeMapAction === 'roadBuilding' && (
             <BoardModeBanner
               tone="blue"
