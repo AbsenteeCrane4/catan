@@ -49,6 +49,22 @@ interface Pose {
   panY: number;
 }
 
+/**
+ * What the camera resolved to this frame, in the terms a second renderer needs to
+ * reproduce it: the board's CSS transform, plus the perspective and viewport it is
+ * projected through.
+ */
+export interface CameraFrame {
+  pitch: number;
+  yaw: number;
+  scale: number;
+  panX: number;
+  panY: number;
+  perspective: number;
+  width: number;
+  height: number;
+}
+
 const startPose = (): Pose => ({
   pitch: CAMERA.pitch.start,
   yaw: CAMERA.yaw.start,
@@ -79,6 +95,12 @@ export function useTabletopCamera({ boardWidth, boardHeight }: TabletopCameraOpt
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const gesture = useRef<'none' | 'pan' | 'orbit' | 'pinch'>('none');
   const pinchDistance = useRef(0);
+  /**
+   * Renderers that have to track this camera. They are called from the write, not from
+   * React, so a 3D layer stays in step frame for frame without a rerender.
+   */
+  const listeners = useRef(new Set<(frame: CameraFrame) => void>());
+  const latest = useRef<CameraFrame | null>(null);
 
   const write = useCallback(() => {
     const scene = sceneRef.current;
@@ -94,7 +116,8 @@ export function useTabletopCamera({ boardWidth, boardHeight }: TabletopCameraOpt
 
     // Perspective tracks the board's on-screen size, so zooming magnifies the scene
     // instead of walking the camera into it and warping the far tiles.
-    scene.style.perspective = `${Math.max(600, boardWidth * scale * CAMERA.perspective).toFixed(0)}px`;
+    const perspective = Math.max(600, boardWidth * scale * CAMERA.perspective);
+    scene.style.perspective = `${perspective.toFixed(0)}px`;
 
     // The one transform that stands a piece up again. Every billboard reads this, so
     // the whole board's worth of pieces costs a single property write per frame.
@@ -102,7 +125,29 @@ export function useTabletopCamera({ boardWidth, boardHeight }: TabletopCameraOpt
       '--tt-billboard',
       `rotateZ(${(-yaw).toFixed(2)}deg) rotateX(${(-pitch).toFixed(2)}deg)`
     );
+
+    const frameState: CameraFrame = {
+      pitch,
+      yaw,
+      scale,
+      panX,
+      panY: panY + offsetY.current,
+      perspective,
+      width: scene.clientWidth,
+      height: scene.clientHeight,
+    };
+    latest.current = frameState;
+    for (const listener of listeners.current) listener(frameState);
   }, [boardWidth]);
+
+  /** Track the camera. The listener is called immediately with the current pose. */
+  const onFrame = useCallback((listener: (frame: CameraFrame) => void) => {
+    listeners.current.add(listener);
+    if (latest.current) listener(latest.current);
+    return () => {
+      listeners.current.delete(listener);
+    };
+  }, []);
 
   /**
    * Runs the pose towards its target, then parks itself. No frame is scheduled while the
@@ -358,5 +403,5 @@ export function useTabletopCamera({ boardWidth, boardHeight }: TabletopCameraOpt
     [zoomAt]
   );
 
-  return { sceneRef, worldRef, reset, zoomBy };
+  return { sceneRef, worldRef, reset, zoomBy, onFrame };
 }

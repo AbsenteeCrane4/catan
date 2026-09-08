@@ -1,80 +1,99 @@
 'use client';
 
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Hex } from '@/types/catan';
 import { BoardView, islandPath } from '@/lib/board/geometry';
+import { PieceScene, ScenePiece, createPieceScene } from '@/lib/board/pieceScene';
 import { BOARD_BACKGROUND_IMAGE } from '@/lib/constants';
 import { CAMERA, useTabletopCamera } from '@/hooks/useTabletopCamera';
 import { Compass, Minus, Plus } from 'lucide-react';
 import { clsx } from 'clsx';
 
 /**
- * The tabletop the board sits on: ocean environment, the tilted board plane, the cliff
- * the island stands on, and the camera that moves all of it.
+ * The tabletop: a flat board on an ocean, seen from an elevated angle, with the game
+ * pieces standing on it as real 3D objects.
  *
- * The scene is a CSS 3D context. `.world` carries the camera transform and everything
- * inside it lives in board units, so a child positions itself with the same coordinates
- * the reducer uses. Two kinds of thing live in there:
+ * The split is the one `docs/threejs-example.jpeg` describes and `docs/renderer-spike.md`
+ * records. The **board is 2D** — SVG terrain on a CSS-transformed plane, where every
+ * click target is still a DOM node and every board `data-cy` still resolves. The
+ * **pieces are three.js**, drawn on one transparent canvas laid over it, lit and casting
+ * real shadows down onto the board.
  *
- * - **Ground layers** lie on the board plane and foreshorten with it: terrain, roads,
- *   harbours, legal-target markers, click targets.
- * - **Billboards** stand up out of it: pieces, the robber, number tokens. They cancel the
- *   camera rotation with a single inherited custom property, so a whole board's worth of
- *   them costs one style write per frame rather than one each.
+ * Two kinds of thing still live in the DOM plane:
+ *
+ * - **Ground layers** lie on the board and foreshorten with it: terrain, harbours,
+ *   legal-target markers, click targets.
+ * - **Billboards** stand up out of it: the number tokens, which have to stay square to
+ *   the player to stay readable.
  */
-
-/**
- * How thick the island reads, as stacked silhouettes below the terrain.
- *
- * This is the whole reason the board looks like an object rather than a picture: the
- * layers are hidden behind the terrain when seen from straight on and fan out into a
- * cliff face as soon as the camera tilts.
- */
-const CLIFF_LAYERS = 15;
-const CLIFF_STEP = 4.6;
-/** Each layer draws slightly smaller, so the rock tapers rather than dropping sheer. */
-const CLIFF_TAPER = 0.45;
-
-/** Sunlit sandstone at the waterline down to wet rock in the shadow beneath. */
-const CLIFF_TOP = [0xa4, 0x8c, 0x66];
-const CLIFF_BOTTOM = [0x0d, 0x11, 0x18];
-
-const cliffShade = (t: number) =>
-  '#' +
-  CLIFF_TOP.map((from, i) =>
-    Math.round(from + (CLIFF_BOTTOM[i] - from) * t)
-      .toString(16)
-      .padStart(2, '0')
-  ).join('');
 
 interface TabletopProps {
   view: BoardView;
   hexes: readonly Hex[];
   /** Flat layers on the board plane, drawn in order from the surface upwards. */
   ground: ReactNode;
-  /** Upright pieces. Positioned with `Billboard`. */
-  pieces: ReactNode;
+  /** Upright DOM elements that belong to the board itself, such as the number tokens. */
+  billboards: ReactNode;
+  /** The game pieces, rendered by three.js over everything else. */
+  meshes: readonly ScenePiece[];
+  /**
+   * Drawn in place of `meshes` when WebGL is unavailable. Without it, a machine that
+   * cannot open a 3D context would show a board with no pieces on it — not a degraded
+   * game so much as an unplayable one.
+   */
+  fallbackPieces: ReactNode;
 }
 
-export function Tabletop({ view, hexes, ground, pieces }: TabletopProps) {
-  const { sceneRef, worldRef, reset, zoomBy } = useTabletopCamera({
+export function Tabletop({
+  view,
+  hexes,
+  ground,
+  billboards,
+  meshes,
+  fallbackPieces,
+}: TabletopProps) {
+  const { sceneRef, worldRef, reset, zoomBy, onFrame } = useTabletopCamera({
     boardWidth: view.w,
     boardHeight: view.h,
   });
 
-  // One path per depth, each slightly smaller, so the cliff tapers instead of dropping
-  // as a straight extrusion. Recomputed only when the board itself changes.
-  const cliffs = useMemo(
-    () =>
-      Array.from({ length: CLIFF_LAYERS }, (_, i) => ({
-        z: -(i + 1) * CLIFF_STEP,
-        path: islandPath(hexes, (i + 1) * CLIFF_TAPER),
-        // Eased so the light falls off fast just under the shoreline, the way a real
-        // cliff does, instead of fading linearly into the water.
-        fill: cliffShade(Math.pow((i + 1) / CLIFF_LAYERS, 0.65)),
-      })),
-    [hexes]
-  );
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const fallbackRef = useRef<HTMLDivElement | null>(null);
+  const pieceScene = useRef<PieceScene | null>(null);
+  const latestMeshes = useRef(meshes);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const fallback = fallbackRef.current;
+    if (!canvas) return;
+
+    const scene = createPieceScene(canvas, view);
+    // No context available: leave the DOM fallback showing and do nothing else.
+    if (!scene) return;
+
+    pieceScene.current = scene;
+    canvas.dataset.webgl = 'on';
+    // Hidden on the element rather than through React state. Whether the browser has
+    // WebGL is not knowable when the server renders, so this has to be a capability
+    // check after mount, and a state update here would be a hydration mismatch.
+    if (fallback) fallback.hidden = true;
+
+    const stopTracking = onFrame(frame => scene.setCamera(frame));
+    scene.setPieces(latestMeshes.current);
+
+    return () => {
+      stopTracking();
+      scene.dispose();
+      pieceScene.current = null;
+      delete canvas.dataset.webgl;
+      if (fallback) fallback.hidden = false;
+    };
+  }, [view, onFrame]);
+
+  useEffect(() => {
+    latestMeshes.current = meshes;
+    pieceScene.current?.setPieces(meshes);
+  }, [meshes]);
 
   const surface = useMemo(() => islandPath(hexes), [hexes]);
   const box = `${view.minX} ${view.minY} ${view.w} ${view.h}`;
@@ -104,22 +123,21 @@ export function Tabletop({ view, hexes, ground, pieces }: TabletopProps) {
             transform: `scale(1) rotateX(${CAMERA.pitch.start}deg)`,
           }}
         >
-          {/* Cast onto the water before anything else, so the island reads as sitting in
-              the sea rather than printed on it. */}
-          <WorldLayer z={-CLIFF_LAYERS * CLIFF_STEP - 14} className="opacity-85">
+          {/* The board is flat, so this is a contact shadow on the water rather than the
+              underside of a slab. */}
+          <WorldLayer z={-2} className="opacity-70">
             <svg viewBox={box} className="h-full w-full overflow-visible" aria-hidden>
               <path
                 d={surface}
-                fill="#020c18"
-                transform="translate(8, 26)"
-                style={{ filter: 'blur(15px)' }}
+                fill="#031020"
+                transform="translate(4, 14)"
+                style={{ filter: 'blur(13px)' }}
               />
             </svg>
           </WorldLayer>
 
-          {/* The waterline, at the foot of the cliff rather than up on the terrain:
-              drawn any higher, the surf washes over the rock face in front of it. */}
-          <WorldLayer z={-CLIFF_LAYERS * CLIFF_STEP + CLIFF_STEP}>
+          {/* Shallows, then surf breaking on the coast. */}
+          <WorldLayer z={-1}>
             <svg viewBox={box} className="h-full w-full overflow-visible" aria-hidden>
               <path
                 d={surface}
@@ -140,36 +158,36 @@ export function Tabletop({ view, hexes, ground, pieces }: TabletopProps) {
             </svg>
           </WorldLayer>
 
-          {cliffs
-            .slice()
-            .reverse()
-            .map(cliff => (
-              <WorldLayer key={cliff.z} z={cliff.z}>
-                <svg viewBox={box} className="h-full w-full overflow-visible" aria-hidden>
-                  <path d={cliff.path} fill={cliff.fill} />
-                </svg>
-              </WorldLayer>
-            ))}
-
           {ground}
 
           <div className="absolute inset-0 [transform-style:preserve-3d]" data-cy="piece-layer">
-            {pieces}
+            {billboards}
+            <div
+              ref={fallbackRef}
+              data-cy="piece-fallback"
+              className="absolute inset-0 [transform-style:preserve-3d]"
+            >
+              {fallbackPieces}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* The 3D pieces. Inert to the pointer: every click still lands on the board's own
+          DOM targets underneath, which is what keeps the interaction — and every spec —
+          identical to the board without it. */}
+      <canvas
+        ref={canvasRef}
+        data-cy="piece-canvas"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+      />
 
       <CameraControls onReset={reset} onZoom={zoomBy} />
     </div>
   );
 }
 
-/**
- * A flat layer on the board plane, lifted `z` board units along the board's own normal.
- *
- * Separate layers are how thickness happens without a 3D engine: draw the same road
- * twice at different heights and the lower one becomes its side.
- */
+/** A flat layer on the board plane, lifted `z` board units along the board's own normal. */
 export function WorldLayer({
   z = 0,
   interactive = false,
@@ -197,7 +215,7 @@ export function WorldLayer({
 }
 
 /**
- * An upright piece anchored to a board coordinate.
+ * An upright element anchored to a board coordinate.
  *
  * The wrapper is a zero-size point at the board position; `--tt-billboard` turns the
  * camera rotation back off inside it, so the child is drawn in screen space with its

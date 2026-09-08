@@ -106,6 +106,32 @@ describe('Tabletop camera', () => {
     });
   });
 
+  it('recovers the whole pose, not just the pan', () => {
+    pose().then(start => {
+      drag([620, 300], [800, 400]);
+      scene().trigger('wheel', { deltaY: -700, clientX: 620, clientY: 300 });
+      drag([620, 300], [760, 360], { button: 2 });
+      settled();
+
+      pose().then(moved => {
+        expect(moved.scale, 'zoom moved').to.not.be.closeTo(start.scale, 0.01);
+        expect(moved.yaw, 'orbit moved').to.not.equal(start.yaw);
+      });
+
+      cy.get('[data-cy=camera-reset-btn]').click();
+      settled();
+      settled();
+
+      pose().then(reset => {
+        expect(reset.scale, 'zoom restored').to.be.closeTo(start.scale, 0.01);
+        expect(reset.yaw, 'orbit restored').to.be.closeTo(start.yaw, 0.5);
+        expect(reset.pitch, 'elevation restored').to.be.closeTo(start.pitch, 0.5);
+        expect(reset.tx).to.be.closeTo(start.tx, 1);
+        expect(reset.ty).to.be.closeTo(start.ty, 1);
+      });
+    });
+  });
+
   it('keeps the board recoverable however far it is dragged', () => {
     // Ten hard drags in the same direction, well past any sane pan.
     for (let i = 0; i < 10; i++) drag([400, 200], [1200, 700]);

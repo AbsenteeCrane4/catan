@@ -18,9 +18,9 @@ interface SettlementNodeProps {
  * A settlement spot on the board plane: the click target, the legal-target marker and
  * the piece's contact shadow.
  *
- * The piece itself is not drawn here. It stands upright in the billboard layer, so this
- * element stays flat on the board where the pointer geometry and every `data-cy` the
- * specs rely on already live.
+ * The piece itself is not drawn here, and neither is its shadow: the piece is a three.js
+ * mesh on the layer above, and it casts a real one. This element stays flat on the board,
+ * where the pointer geometry and every `data-cy` the specs rely on already live.
  */
 export function SettlementNode({
   node,
@@ -52,19 +52,6 @@ export function SettlementNode({
       data-is-city={owner?.isCity ? 'true' : undefined}
       data-legal-target={isLegalTarget ? 'true' : undefined}
     >
-      {/* Where the standing piece meets the board. Grounding a billboard is the whole
-          job of this ellipse — without it the piece looks pasted on. */}
-      {owner && (
-        <ellipse
-          rx={owner.isCity ? 17 : 14}
-          ry={owner.isCity ? 7.5 : 6}
-          cy="1"
-          fill="rgba(12, 8, 3, 0.42)"
-          className="pointer-events-none"
-          data-cy="piece-shadow"
-        />
-      )}
-
       {isLegalTarget && (
         // A ring rather than a disc: an upgrade target already has a settlement standing
         // on it, and the marker has to stay visible around its feet.

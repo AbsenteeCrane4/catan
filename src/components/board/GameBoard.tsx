@@ -4,11 +4,14 @@ import { useMemo, useState } from 'react';
 import { GameStateView, PlayerColor } from '@/types/catan';
 import { HexTile } from './HexTile';
 import { SettlementNode } from './SettlementNode';
-import { RoadBodies, RoadLayer } from './RoadLayer';
+import { RoadLayer } from './RoadLayer';
 import { HarbourLayer } from './HarbourLayer';
-import { BoardPieces } from './BoardPieces';
+import { FallbackPieces, NumberTokens } from './BoardPieces';
 import { Tabletop, WorldLayer } from './Tabletop';
-import { boardView, islandPath } from '@/lib/board/geometry';
+import { boardEdges, boardView, islandPath } from '@/lib/board/geometry';
+import { ScenePiece } from '@/lib/board/pieceScene';
+import { hexToPixel } from '@/lib/hex-utils';
+import { pieceShades } from '@/lib/constants';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 interface GameBoardProps {
@@ -35,25 +38,22 @@ interface GameBoardProps {
 
 const NO_TARGETS: ReadonlySet<string> = new Set();
 
-/** Height, shade and width of each pass over the built roads, bottom slice first. */
-const ROAD_SLICES = [
-  { z: 2.5, shade: 'side', width: 11 },
-  { z: 6, shade: 'base', width: 10 },
-  { z: 9, shade: 'top', width: 4.5 },
-] as const;
+/** Dark turned wood — the one piece on the board that is nobody's colour. */
+const ROBBER_COLOR = '#2b2320';
 
 /**
- * The Catan board as a physical object on a table.
+ * The Catan board: a flat board seen from an elevated angle, with the game pieces
+ * standing on it as three.js meshes.
  *
- * The board is a stack of layers in one CSS 3D scene rather than a single flat SVG: the
- * terrain and everything clickable lie on the board plane and foreshorten with it, the
- * roads sit on layers above it so they have thickness, and the pieces stand up as
- * billboards. See `Tabletop` for the scene itself.
+ * The two layers have a deliberate division of labour. The board is DOM — terrain,
+ * harbours, legal-target markers and every click target are SVG on a CSS-transformed
+ * plane, so the pointer and the specs work exactly as they did when it was flat. The
+ * pieces are 3D, drawn on a canvas above it from the list assembled here.
  *
- * The renderer owns none of the game's truth. Every position here comes from the node and
- * hex coordinates the reducer already uses, and every affordance comes from the legality
- * selectors — so a piece cannot be drawn somewhere the engine disagrees with, and the
- * board cannot offer a build the reducer would reject.
+ * The renderer owns none of the game's truth either way. Every position comes from the
+ * node and hex coordinates the reducer already uses, and every affordance comes from the
+ * legality selectors — so a piece cannot be drawn somewhere the engine disagrees with,
+ * and the board cannot offer a build the reducer would reject.
  */
 export function GameBoard({
   state: { hexes, nodes, settlements, roads, harbours, robberHexId, players },
@@ -88,10 +88,99 @@ export function GameBoard({
   // make settlement spots clickable.
   const isNodeMode = targetKind === 'settlement' || targetKind === 'city';
 
-  const preview =
-    isNodeMode && hoveredNode !== null && legalNodes.has(hoveredNode)
-      ? { nodeId: hoveredNode, kind: targetKind, color: previewColor }
-      : null;
+  const previewNode =
+    isNodeMode && hoveredNode !== null && legalNodes.has(hoveredNode) ? hoveredNode : null;
+
+  /**
+   * Every piece on the board, for the 3D layer.
+   *
+   * Ids are stable and derived from the node or edge the piece occupies, so a settlement
+   * that is already standing is left alone rather than rebuilt and dropped again when
+   * something else on the board changes.
+   */
+  const meshes = useMemo<ScenePiece[]>(() => {
+    const list: ScenePiece[] = [];
+
+    for (const node of nodes) {
+      const settlement = settlements[node.id];
+      if (!settlement) continue;
+      list.push({
+        id: `piece:${node.id}`,
+        kind: settlement.isCity ? 'city' : 'settlement',
+        x: node.pixelPos.x,
+        y: node.pixelPos.y,
+        color: pieceShades(playerColors[settlement.playerId]).base,
+      });
+    }
+
+    for (const edge of boardEdges(nodes)) {
+      const road = roads[edge.id];
+      if (!road) continue;
+      list.push({
+        id: `road:${edge.id}`,
+        kind: 'road',
+        x: edge.a.pixelPos.x,
+        y: edge.a.pixelPos.y,
+        x2: edge.b.pixelPos.x,
+        y2: edge.b.pixelPos.y,
+        color: pieceShades(playerColors[road.playerId]).base,
+      });
+    }
+
+    const robberHex = hexes.find(h => h.id === robberHexId);
+    if (robberHex) {
+      const { x, y } = hexToPixel(robberHex.q, robberHex.r);
+      list.push({ id: 'robber', kind: 'robber', x, y, color: ROBBER_COLOR });
+    }
+
+    // Placement previews are the same meshes, ghosted — so what the player sees hovering
+    // is literally the piece that will land there.
+    const ghost = pieceShades(previewColor).top;
+
+    if (previewNode !== null) {
+      const node = nodes.find(n => n.id === previewNode);
+      if (node) {
+        list.push({
+          id: 'ghost:node',
+          kind: targetKind === 'city' ? 'city' : 'settlement',
+          x: node.pixelPos.x,
+          y: node.pixelPos.y,
+          color: ghost,
+          ghost: true,
+        });
+      }
+    }
+
+    // The first of the two free Road Building roads, held until the second is chosen.
+    for (const [a, b] of pendingRoads) {
+      const from = nodes.find(n => n.id === a);
+      const to = nodes.find(n => n.id === b);
+      if (!from || !to) continue;
+      list.push({
+        id: `ghost:road:${a}-${b}`,
+        kind: 'road',
+        x: from.pixelPos.x,
+        y: from.pixelPos.y,
+        x2: to.pixelPos.x,
+        y2: to.pixelPos.y,
+        color: ghost,
+        ghost: true,
+      });
+    }
+
+    return list;
+  }, [
+    nodes,
+    settlements,
+    roads,
+    hexes,
+    robberHexId,
+    playerColors,
+    previewNode,
+    targetKind,
+    previewColor,
+    pendingRoads,
+  ]);
 
   const handleUpgradeConfirm = () => {
     if (pendingUpgradeNode) {
@@ -105,108 +194,81 @@ export function GameBoard({
       <Tabletop
         view={view}
         hexes={hexes}
+        meshes={meshes}
         ground={
-          <>
-            <WorldLayer z={0} interactive>
-              <svg
-                viewBox={box}
-                className="h-full w-full overflow-visible"
-                data-cy="game-board"
-              >
-                <defs>
-                  {/* Soft directional light across the whole island, so the tiles read as
-                      one lit object rather than nineteen separate pictures. */}
-                  <linearGradient id="tt-island-light" x1="0.1" y1="0" x2="0.85" y2="1">
-                    <stop offset="0%" stopColor="#fff4d6" stopOpacity="0.22" />
-                    <stop offset="42%" stopColor="#ffffff" stopOpacity="0.02" />
-                    <stop offset="100%" stopColor="#05172c" stopOpacity="0.32" />
-                  </linearGradient>
-                </defs>
+          <WorldLayer z={0} interactive>
+            <svg viewBox={box} className="h-full w-full overflow-visible" data-cy="game-board">
+              <defs>
+                {/* Soft directional light across the whole island, so the tiles read as
+                    one lit object rather than nineteen separate pictures. */}
+                <linearGradient id="tt-island-light" x1="0.1" y1="0" x2="0.85" y2="1">
+                  <stop offset="0%" stopColor="#fff4d6" stopOpacity="0.22" />
+                  <stop offset="42%" stopColor="#ffffff" stopOpacity="0.02" />
+                  <stop offset="100%" stopColor="#05172c" stopOpacity="0.32" />
+                </linearGradient>
+              </defs>
 
-                <g id="hex-layer">
-                  {hexes.map(hex => (
-                    <HexTile
-                      key={hex.id}
-                      hex={hex}
-                      isSelectable={isMovingRobber && hex.id !== robberHexId}
-                      onClick={() => isMovingRobber && onHexClick?.(hex.id)}
-                    />
-                  ))}
-                </g>
-
-                <path
-                  d={surface}
-                  fill="url(#tt-island-light)"
-                  className="pointer-events-none"
-                />
-                <path
-                  d={surface}
-                  fill="none"
-                  stroke="rgba(30, 21, 9, 0.55)"
-                  strokeWidth="2.5"
-                  strokeLinejoin="round"
-                  className="pointer-events-none"
-                />
-
-                <RoadLayer
-                  nodes={nodes}
-                  roads={roads}
-                  pendingRoads={pendingRoads}
-                  legalEdges={targetKind === 'road' ? legalEdges : undefined}
-                  previewColor={previewColor}
-                  onBuildRoad={onBuildRoad}
-                />
-
-                <g id="node-layer">
-                  {nodes.map(node => (
-                    <SettlementNode
-                      key={node.id}
-                      node={node}
-                      owner={settlements[node.id]}
-                      isLegalTarget={isNodeMode && legalNodes.has(node.id)}
-                      onHover={hovering => setHoveredNode(hovering ? node.id : null)}
-                      onSelect={() =>
-                        targetKind === 'city'
-                          ? setPendingUpgradeNode(node.id)
-                          : onBuildSettlement(node.id)
-                      }
-                    />
-                  ))}
-                </g>
-              </svg>
-            </WorldLayer>
-
-            <WorldLayer z={-18}>
-              <svg viewBox={box} className="h-full w-full overflow-visible" aria-hidden>
-                <HarbourLayer harbours={harbours} nodes={nodes} />
-              </svg>
-            </WorldLayer>
-
-            {/* Roads, as three slices of one solid piece: sides, body, lit crown. */}
-            {ROAD_SLICES.map(({ z, shade, width }) => (
-              <WorldLayer key={z} z={z}>
-                <svg viewBox={box} className="h-full w-full overflow-visible" aria-hidden>
-                  <RoadBodies
-                    nodes={nodes}
-                    roads={roads}
-                    playerColors={playerColors}
-                    shade={shade}
-                    width={width}
+              <g id="hex-layer">
+                {hexes.map(hex => (
+                  <HexTile
+                    key={hex.id}
+                    hex={hex}
+                    isSelectable={isMovingRobber && hex.id !== robberHexId}
+                    onClick={() => isMovingRobber && onHexClick?.(hex.id)}
                   />
-                </svg>
-              </WorldLayer>
-            ))}
-          </>
+                ))}
+              </g>
+
+              <path d={surface} fill="url(#tt-island-light)" className="pointer-events-none" />
+              <path
+                d={surface}
+                fill="none"
+                stroke="rgba(30, 21, 9, 0.55)"
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                className="pointer-events-none"
+              />
+
+              <HarbourLayer harbours={harbours} nodes={nodes} />
+
+              <RoadLayer
+                nodes={nodes}
+                roads={roads}
+                pendingRoads={pendingRoads}
+                legalEdges={targetKind === 'road' ? legalEdges : undefined}
+                previewColor={previewColor}
+                onBuildRoad={onBuildRoad}
+              />
+
+              <g id="node-layer">
+                {nodes.map(node => (
+                  <SettlementNode
+                    key={node.id}
+                    node={node}
+                    owner={settlements[node.id]}
+                    isLegalTarget={isNodeMode && legalNodes.has(node.id)}
+                    onHover={hovering => setHoveredNode(hovering ? node.id : null)}
+                    onSelect={() =>
+                      targetKind === 'city'
+                        ? setPendingUpgradeNode(node.id)
+                        : onBuildSettlement(node.id)
+                    }
+                  />
+                ))}
+              </g>
+            </svg>
+          </WorldLayer>
         }
-        pieces={
-          <BoardPieces
+        billboards={<NumberTokens view={view} hexes={hexes} />}
+        fallbackPieces={
+          <FallbackPieces
             view={view}
             hexes={hexes}
             nodes={nodes}
             settlements={settlements}
+            roads={roads}
             playerColors={playerColors}
             robberHexId={robberHexId}
-            preview={preview}
           />
         }
       />

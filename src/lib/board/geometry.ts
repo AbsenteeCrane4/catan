@@ -111,3 +111,15 @@ export function boardEdges(nodes: readonly GameNode[]): BoardEdge[] {
 
   return edges;
 }
+
+/**
+ * Board coordinates to the 3D scene's local space.
+ *
+ * The board element is transformed about its own centre, so the scene's origin is the
+ * middle of the board box rather than its corner. Screen y runs downwards and three.js y
+ * runs upwards, hence the flip — which is also what makes a piece's height +z, straight
+ * out of the board.
+ */
+export function toSceneSpace(view: BoardView, x: number, y: number): [number, number] {
+  return [x - view.minX - view.w / 2, view.h / 2 - (y - view.minY)];
+}

@@ -1,15 +1,18 @@
 # Renderer spike: SVG vs React Three Fiber
 
-**Issue:** #55 (sub-issue of #47) · **Outcome:** enhance the existing SVG, in a CSS 3D scene. No 3D engine.
+**Issue:** #55 (sub-issue of #47)
 
-`docs/DESIGN.md` §10 asks that we establish whether the tabletop in
-`docs/design-reference-horizon-settlers.png` can be reached by enhancing the board we
-have, before reaching for a renderer that would replace it. This is that comparison and
-the decision it produced.
+**Outcome: a split.** The **board stays 2D** — SVG terrain on a CSS-transformed plane. The
+**game pieces are three.js** — real meshes, lit, casting real shadows, on one transparent
+canvas over the board. Reference: `docs/threejs-example.jpeg`.
+
+`docs/DESIGN.md` §10 asks that we establish whether the target can be reached by enhancing
+the board we have, before reaching for a renderer that would replace it. This is that
+comparison and the decision it produced.
 
 ## What was actually being decided
 
-Not "2D or 3D". The target needs four things, and only the fourth is a real fork:
+Not "2D or 3D". The target needs four things:
 
 1. An elevated perspective around 45–50°.
 2. Pan, zoom and constrained orbit that feel like moving a tabletop.
@@ -18,88 +21,96 @@ Not "2D or 3D". The target needs four things, and only the fourth is a real fork
 4. All of it without the camera touching React state, the game engine, or the test suite.
 
 CSS 3D transforms give (1) and (2) outright — the browser does the perspective divide and,
-crucially, the *inverse* transform for hit testing. The fork is (3): pieces on a tilted
-plane lie down with it, and a house lying flat on the ground is a floor plan.
+crucially, the *inverse* transform for hit testing. The real question was (3), and it has
+a different answer for the board than it does for the pieces.
 
-## The two candidates
+## The board: 2D
 
-### React Three Fiber
+**Terrain does not need geometry.** `public/images/tiles/*.png` are painted hexes viewed
+from a 3/4 angle already. Texture-mapped onto extruded prisms they would read *worse*, so
+going 3D for the board means commissioning new terrain art as well as writing the
+renderer.
 
-**For:** real geometry, real lights, real shadows; orbit controls out of the box; the
-obvious answer if the board were being built from nothing.
+**A canvas board deletes the test surface.** Every board `data-cy` — `hex`, `node`,
+`edge`, `harbour`, `hex-image`, `legal-target` — is a DOM node. Inside a `<canvas>` there
+is none of that, so `board-artwork`, `harbours`, `setup-phase`, `six-players-expansion`,
+`spectator` and `build-affordances` would all need rewriting against a bespoke test
+handle, and the jsdom tests in `build-mode.test.tsx` — which compare the highlighted DOM
+against the legality selectors — could not run at all, because jsdom has no WebGL.
 
-**Against, in the order the objections actually bite:**
+So the board is an SVG plane under `perspective` and `rotateX`. Clicks land on the same
+elements they did when it was flat; the browser maps the pointer through the transform.
 
-- **It deletes the test surface.** Every board `data-cy` — `hex`, `node`, `edge`,
-  `harbour`, `hex-image`, `legal-target` — is a DOM node today. Inside a `<canvas>` there
-  is no DOM, so `board-artwork`, `harbours`, `setup-phase`, `six-players-expansion`,
-  `spectator` and `build-affordances` would all need rewriting against a bespoke test
-  handle, and the 12 jsdom tests in `build-mode.test.tsx` — which compare the highlighted
-  DOM against the legality selectors — could not run at all, because jsdom has no WebGL.
-  That is a large, uninsured rewrite of the thing that proves the board is correct.
-- **The existing tile art fights it.** `public/images/tiles/*.png` are painted hexes with
-  a 3/4 view already baked in — trees standing up, cliffs at the tile edge. Texture-mapped
-  onto a 3D prism they would read worse than they do now, so adopting R3F means
-  commissioning new terrain as well.
-- **It is not free at runtime or in the image.** `three` plus `@react-three/fiber` is
-  several hundred KB into a bundle that is currently dependency-light, and the Docker
-  runner stage installs production dependencies only.
-- **Nothing in the reference needs it.** The reference is a *diorama seen from one fixed
-  angle*, not a scene that has to be lit from arbitrary directions.
+An earlier revision of this spike gave the board physical thickness — a stack of fifteen
+silhouettes forming a cliff. That was **removed**: the board should read as a board, and
+the depth in the scene should come from the pieces standing on it, which is exactly what
+the reference shows.
 
-### Enhanced SVG in a CSS 3D scene — chosen
+## The pieces: three.js
 
-The board becomes a stack of layers inside one `perspective` context:
+This is where a real renderer earns its place, and where SVG had been faking it.
 
-- The terrain, roads, harbours, legal-target markers and every click target stay in the
-  existing SVG, which becomes the **board plane** and foreshortens with it.
-- Height is stacked layers at different `translateZ`: the island's cliff is fifteen
-  copies of the landmass silhouette, and a road's thickness is three slices of the same
-  line.
-- Pieces that must stand up — settlements, cities, the robber, number tokens — are
-  **billboards**: positioned in the 3D world, then rotated back to face the camera.
+A settlement, a city, a road and the robber are *objects*. They have a top that catches
+the light and a side that does not, they occlude each other, and they cast shadows onto
+the board. The SVG version could only approximate that with hand-painted three-tone
+shading on a flat sprite that was turned back to face the camera every frame — a cutout
+standing on the board, convincing only as long as nothing moved.
 
-**What that buys:**
+Meshes give it for nothing: one directional light fixed to the board, and the shading,
+the occlusion and the contact shadows all fall out. Because only the pieces are 3D:
 
-- Every board selector keeps working, unchanged, because everything interactive is still
-  the same DOM element in the same place. The browser maps a click through the 3D
-  transform for us.
-- The jsdom component tests keep running: CSS transforms are irrelevant to them.
-- No new dependencies, no bundle growth, no change to the Docker image.
-- The painted tile art is used as intended — printed on the board, foreshortened the way
-  a real board's art is when you look at it from a chair.
-- The camera is four numbers written onto two DOM nodes per frame. No React render, no
-  reconciliation, and nothing near `GameState`.
+- the canvas is `pointer-events: none`, so **every board interaction and every existing
+  spec is untouched** — the pieces are painted over the board, not in front of it
+- there is no game state in the renderer; it is handed a list of `{id, kind, position,
+  colour}` built from the same node and hex coordinates the reducer uses
+- the piece geometry is arithmetic, so it is unit-tested without a graphics context
+  (`pieces3d.test.ts` measures every piece's footprint and base)
 
-**What it costs, honestly:**
+`three` is used directly rather than through React Three Fiber. The camera has to track
+the CSS board frame for frame and must never enter React state, which is exactly what R3F's
+reconciler is for and exactly what this does not need.
 
-- Lighting is painted, not computed: a gradient over the island silhouette and a fixed
-  three-tone shading on each piece. Consistent, but it will not respond if the orbit is
-  pushed to an extreme.
-- Billboards are flat. At the constrained orbit range this reads as physical; it would
-  not survive a free-flying camera, which is precisely the mental model
-  `docs/DESIGN.md` §9 rules out.
-- Depth sorting is the browser's, so overlapping coplanar layers need distinct Z values
-  rather than being sorted for free.
+### Matching the two cameras
 
-## Decision
+This is the one genuinely delicate part. The board is projected by the browser's
+`perspective` on a DOM element; the pieces are projected by a three.js camera. If those
+disagree by even a little the pieces visibly float, so the correspondence is derived
+rather than tuned:
 
-Enhance the SVG. The 3D-engine route buys computed lighting and free-camera freedom,
-neither of which the design asks for, and pays for them by discarding the board's entire
-test surface and its terrain art.
+- a CSS `perspective` of *P* is a pinhole camera *P* pixels in front of the plane, so the
+  three.js camera sits at `(0, 0, P)` with `fov = 2·atan((H/2)/P)` and `aspect = W/H`,
+  which reproduces the CSS projection exactly
+- the board's transform is rebuilt on the scene root as a matrix, with the rotations
+  negated because CSS measures y downwards and three.js measures it up
+- the perspective distance is proportional to the board's on-screen size, so both
+  projections stay identical as the player zooms
 
-If a later issue wants dynamic lighting, terrain relief or a free camera, this decision
-should be revisited — the board plane is already isolated behind `Tabletop`, and the
-legality selectors from #54 mean a new renderer would consume ids rather than re-deriving
-rules.
+`board-pieces.cy.ts` guards the result end to end: the canvas matches the board region,
+never takes a click, and places the robber on the hex coordinate the game reports.
+
+### The fallback
+
+`createPieceScene` returns `null` if a WebGL context cannot be created, and the flat SVG
+stand-ins stay visible. A board with no pieces on it is not a degraded game, it is an
+unplayable one, and the stand-ins already existed.
 
 ## Where it landed
 
 | Concern | File |
 | --- | --- |
-| Scene, environment, cliff, billboards | [`src/components/board/Tabletop.tsx`](../src/components/board/Tabletop.tsx) |
+| Scene, environment, camera wiring, 3D canvas | [`src/components/board/Tabletop.tsx`](../src/components/board/Tabletop.tsx) |
 | Camera: pan, zoom, orbit, limits, recentre | [`src/hooks/useTabletopCamera.ts`](../src/hooks/useTabletopCamera.ts) |
-| Board geometry the renderer draws from | [`src/lib/board/geometry.ts`](../src/lib/board/geometry.ts) |
-| Layer composition | [`src/components/board/GameBoard.tsx`](../src/components/board/GameBoard.tsx) |
-| Standing pieces and number tokens | [`src/components/board/BoardPieces.tsx`](../src/components/board/BoardPieces.tsx) |
+| Piece geometry — house, keep, road, pawn | [`src/lib/board/pieces3d.ts`](../src/lib/board/pieces3d.ts) |
+| three.js scene, lighting, shadows, camera match | [`src/lib/board/pieceScene.ts`](../src/lib/board/pieceScene.ts) |
+| Board geometry both layers draw from | [`src/lib/board/geometry.ts`](../src/lib/board/geometry.ts) |
+| Layer composition and the piece list | [`src/components/board/GameBoard.tsx`](../src/components/board/GameBoard.tsx) |
+| Number tokens and the no-WebGL fallback | [`src/components/board/BoardPieces.tsx`](../src/components/board/BoardPieces.tsx) |
 | Camera behaviour, including "sends nothing to the server" | [`cypress/e2e/board-camera.cy.ts`](../cypress/e2e/board-camera.cy.ts) |
+| The 3D layer, end to end | [`cypress/e2e/board-pieces.cy.ts`](../cypress/e2e/board-pieces.cy.ts) |
+
+## Revisit this if
+
+The board itself needs relief, dynamic lighting or a free camera. The board plane is
+isolated behind `Tabletop`, the pieces already live in a real scene graph, and the
+legality selectors from #54 mean a new renderer would consume ids rather than re-deriving
+rules — so moving the terrain into the same scene is a contained change, not a rewrite.

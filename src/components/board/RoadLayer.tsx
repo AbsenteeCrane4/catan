@@ -22,9 +22,9 @@ interface RoadLayerProps {
  * The interactive half of the roads: click targets, legal-target markers, the hover
  * preview, the pending Road Building selection, and the shadow each built road casts.
  *
- * The road bodies themselves are `RoadBodies`, drawn on layers above this one — a road
- * has to have height to look like a piece rather than a painted line, and height on this
- * board means a separate layer at a different Z.
+ * The road bodies themselves are three.js meshes on the layer above, which is also what
+ * casts their shadows. `RoadBodies` below is the flat stand-in for a browser with no
+ * WebGL context.
  */
 export function RoadLayer({
   nodes,
@@ -65,20 +65,7 @@ export function RoadLayer({
               pointerEvents={isLegalTarget ? 'stroke' : 'none'}
             />
 
-            {/* 2. Contact shadow for a built road, cast on the board below it. */}
-            {existingRoad && (
-              <line
-                x1={start.pixelPos.x} y1={start.pixelPos.y}
-                x2={end.pixelPos.x} y2={end.pixelPos.y}
-                stroke="rgba(10, 7, 3, 0.4)"
-                strokeWidth="13"
-                strokeLinecap="round"
-                className="pointer-events-none"
-                data-cy="road-shadow"
-              />
-            )}
-
-            {/* 3. Legal target marker, then the piece itself previewed on hover. */}
+            {/* 2. Legal target marker, then the piece itself previewed on hover. */}
             {isLegalTarget && (
               <>
                 {/* Marker weight matches a built road: the board is drawn well under
@@ -105,7 +92,7 @@ export function RoadLayer({
               </>
             )}
 
-            {/* 4. Pending road (visual feedback for the 1st Road Building selection). */}
+            {/* 3. Pending road (visual feedback for the 1st Road Building selection). */}
             {isPending && (
               <line
                 x1={start.pixelPos.x} y1={start.pixelPos.y}
