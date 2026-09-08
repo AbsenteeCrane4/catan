@@ -16,9 +16,8 @@ import { RobberIcon } from '@/components/ui/Robber';
  *
  * There are two, and they exist for different reasons.
  *
- * `NumberTokens` is permanent. Flat on a tilted board a token foreshortens into an
- * unreadable oval, and `docs/DESIGN.md` §14 is emphatic that the number wins over the
- * terrain; standing them square to the player is the only way to keep that true.
+ * `NumberTokens` is permanent, and drawn flat on the board plane — same tilt as the
+ * terrain, no billboarding back to the camera.
  *
  * `FallbackPieces` is insurance. The game pieces are three.js meshes on a canvas over the
  * board; these flat stand-ins are drawn instead when the browser cannot open a WebGL
@@ -30,17 +29,22 @@ import { RobberIcon } from '@/components/ui/Robber';
 
 export function NumberTokens({ view, hexes }: { view: BoardView; hexes: Hex[] }) {
   return (
-    <>
+    <WorldLayer z={3}>
       {hexes.map(hex => {
         if (hex.resource === 'desert' || hex.numberToken === null) return null;
         const { x, y } = hexToPixel(hex.q, hex.r);
         return (
-          <Billboard key={hex.id} view={view} x={x} y={y} z={3} data-cy="number-token">
+          <div
+            key={hex.id}
+            className="absolute h-0 w-0"
+            style={{ left: x - view.minX, top: y - view.minY }}
+            data-cy="number-token"
+          >
             <NumberToken token={hex.numberToken} />
-          </Billboard>
+          </div>
         );
       })}
-    </>
+    </WorldLayer>
   );
 }
 
