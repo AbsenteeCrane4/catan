@@ -1,8 +1,8 @@
 'use client';
 
-import { Fragment, useMemo } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { clsx } from "clsx";
-import { BookOpen, Check, X } from "lucide-react";
+import { BookOpen, Check, ChevronUp, X } from "lucide-react";
 import type { GameStateView, ResourceType } from "@/types/catan";
 import {
   BUILD_KINDS,
@@ -14,7 +14,7 @@ import {
   type BuildKind,
 } from "@/lib/game/helpers/buildLegality";
 import { pieceShades } from "@/lib/constants";
-import { PanelHeader, ResourceChip } from "@/components/hud/primitives";
+import { ResourceChip } from "@/components/hud/primitives";
 import { IsoPiece } from "./IsoPiece";
 
 interface BuildPanelProps {
@@ -66,6 +66,9 @@ const units = (amounts: Partial<Record<ResourceType, number>>): ResourceType[] =
  */
 export function BuildPanel({ state, activeKind, onSelect }: BuildPanelProps) {
   const seat = state.viewerSeatIndex;
+  const [open, setOpen] = useState(true);
+
+  const toggle = () => setOpen(o => !o);
 
   // A spectator holds no pieces and no hand, so there is nothing to offer them.
   const availability = useMemo(
@@ -79,9 +82,23 @@ export function BuildPanel({ state, activeKind, onSelect }: BuildPanelProps) {
 
   return (
     <section data-cy="build-panel" className="hs-panel shrink-0 overflow-hidden">
-      <PanelHeader icon={<BookOpen size={20} />} title="Build" />
+      <button
+        type="button"
+        data-cy="build-panel-toggle"
+        aria-expanded={open}
+        onClick={toggle}
+        className={clsx(
+          "flex w-full cursor-pointer items-center gap-[11px] px-4 py-[14px] text-left",
+          open && "border-b border-[rgba(110,160,220,0.16)]"
+        )}
+      >
+        <BookOpen size={20} className="shrink-0 text-hs-accent" />
+        <span className="flex-1 text-[14px] font-bold uppercase tracking-[0.13em] text-hs-text">Build &amp; Rules</span>
+        <ChevronUp size={18} className={clsx("text-hs-mute transition-transform", !open && "rotate-180")} />
+      </button>
 
-      <ul className="flex flex-col gap-2.5 p-3">
+      {/* Hidden rather than unmounted, so the build options stay in the DOM and keep their state. */}
+      <ul hidden={!open} className="flex flex-col gap-2.5 p-3">
         {BUILD_KINDS.map(kind => (
           <BuildOption
             key={kind}

@@ -14,10 +14,10 @@ import { cityBody, robberBody, roadBody, settlementBody } from '@/components/bui
  */
 
 /** Board scales from the piece spec. */
-const SCALE = { settlement: 1.35, city: 1.2, robber: 1.25 } as const;
+const SCALE = { settlement: 0.95, city: 0.85, robber: 1.25 } as const;
 
 /** Road bar: node distance minus this, so it stops short of the corners. */
-const ROAD = { trim: 12, width: 11, height: 7 } as const;
+const ROAD = { trim: 18, width: 7, height: 4.5 } as const;
 
 export function NumberTokens({ hexes }: { hexes: Hex[] }) {
   return (
