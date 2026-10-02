@@ -85,6 +85,70 @@ export const PLAYER_COLOR_CLASSES: Record<PlayerColor, string> = {
   purple: 'bg-purple-700',
 };
 
+/**
+ * Painted-plastic shading per player colour, for the dimensional board pieces.
+ *
+ * A game piece needs more than one colour to read as a solid object: `top` catches the
+ * light, `base` is the lit face, `side` is the face turned away from it and `edge` is the
+ * contact line. Derived from `player.color` and never from seat index, per `CLAUDE.md`.
+ * These are inline SVG fills, so unlike `PLAYER_COLOR_CLASSES` they are invisible to
+ * Tailwind by design.
+ */
+export interface PieceShades {
+  top: string;
+  base: string;
+  side: string;
+  edge: string;
+}
+
+export const PLAYER_PIECE_SHADES: Record<PlayerColor, PieceShades> = {
+  red: { top: '#f4796a', base: '#d33f31', side: '#a02a1f', edge: '#5f1610' },
+  blue: { top: '#6ba6f5', base: '#2f74d8', side: '#1d4c95', edge: '#102b57' },
+  white: { top: '#ffffff', base: '#e4e8ee', side: '#b3bcca', edge: '#6b7280' },
+  orange: { top: '#ffbc63', base: '#e8892a', side: '#b25f12', edge: '#6a3607' },
+  green: { top: '#68cf85', base: '#2f9f52', side: '#1d7038', edge: '#0f3d1e' },
+  brown: { top: '#b07a48', base: '#7d4c26', side: '#573217', edge: '#2e1a0b' },
+  purple: { top: '#b184ef', base: '#7d47c9', side: '#552b8e', edge: '#2f1652' },
+};
+
+/** Falls back to white so an unexpected colour still draws a piece rather than nothing. */
+export const pieceShades = (color: PlayerColor | string | undefined): PieceShades =>
+  PLAYER_PIECE_SHADES[color as PlayerColor] ?? PLAYER_PIECE_SHADES.white;
+
+/** Player colour as flat CSS, for HUD text, swatches and log rules (inline styles). */
+export const PLAYER_COLOR_CSS: Record<PlayerColor, string> = {
+  red: '#b91c1c',
+  blue: '#1d4ed8',
+  white: '#e2e8f0',
+  orange: '#f59e0b',
+  green: '#059669',
+  brown: '#78350f',
+  purple: '#7e22ce',
+};
+
+/**
+ * HUD text colour per player. The swatch colours above are too dark to read as text on
+ * the navy panels for blue, brown and purple, so text uses a lifted shade of the same hue.
+ */
+export const PLAYER_TEXT_CSS: Record<PlayerColor, string> = {
+  red: '#f87171',
+  blue: '#60a5fa',
+  white: '#e2e8f0',
+  orange: '#fbbf24',
+  green: '#34d399',
+  brown: '#c08a5a',
+  purple: '#c084fc',
+};
+
+/** Border tint for each resource card in the hand. */
+export const RESOURCE_CARD_BORDERS: Record<ResourceType, string> = {
+  wood: '#8aa06a',
+  brick: '#c07a52',
+  sheep: '#8fbf72',
+  wheat: '#e0bb63',
+  ore: '#8b99a8',
+};
+
 export const PLAYER_COLOR_LABELS: Record<PlayerColor, string> = {
   red: 'Red',
   blue: 'Blue',

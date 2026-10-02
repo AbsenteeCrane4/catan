@@ -1,13 +1,13 @@
 import { GameNode, PlayerColor, Road } from "@/types/catan";
+import { boardEdges } from "@/lib/board/geometry";
 import { edgeId } from "@/lib/game/helpers/buildLegality";
+import { pieceShades } from "@/lib/constants";
 import { clsx } from "clsx";
 
 interface RoadLayerProps {
   nodes: GameNode[];
   roads: Record<string, Road>;
   pendingRoads?: [string, string][];
-  /** playerId -> chosen colour. Supplied by GameBoard, never derived from seat index. */
-  playerColors: Record<number, PlayerColor>;
   /**
    * Edge ids the reducer would accept right now, from `legalRoadEdges`. Undefined means
    * no road mode is armed, and then no edge is clickable at all.
@@ -18,45 +18,25 @@ interface RoadLayerProps {
   onBuildRoad: (n1: string, n2: string) => void;
 }
 
+/**
+ * The interactive half of the roads: click targets, legal-target markers, the hover
+ * preview and the pending Road Building selection.
+ *
+ * The built road pieces themselves are drawn by `PieceLayer`.
+ */
 export function RoadLayer({
   nodes,
   roads,
   pendingRoads = [],
-  playerColors,
   legalEdges,
   previewColor,
   onBuildRoad,
 }: RoadLayerProps) {
-  // Use a Set to prevent rendering connections twice (A-B vs B-A)
-  const processed = new Set<string>();
-  const connections: { id: string; start: GameNode; end: GameNode; existingRoad: Road; isPending: boolean; }[] = [];
-
-  nodes.forEach(node => {
-    node.neighbors.forEach(neighborId => {
-      const neighbor = nodes.find(n => n.id === neighborId);
-      if (!neighbor) return;
-
-      const id = edgeId(node.id, neighborId);
-
-      if (!processed.has(id)) {
-        processed.add(id);
-
-        const isPending = pendingRoads.some(([p1, p2]) => edgeId(p1, p2) === id);
-
-        connections.push({
-          id,
-          start: node,
-          end: neighbor,
-          existingRoad: roads[id],
-          isPending
-        });
-      }
-    });
-  });
-
   return (
     <g className="road-layer">
-      {connections.map(({ id, start, end, existingRoad, isPending }) => {
+      {boardEdges(nodes).map(({ id, a: start, b: end }) => {
+        const existingRoad = roads[id];
+        const isPending = pendingRoads.some(([p1, p2]) => edgeId(p1, p2) === id);
         // Legality is decided by the shared selector, never by hit-testing here.
         const isLegalTarget = !!legalEdges?.has(id) && !isPending;
 
@@ -74,12 +54,13 @@ export function RoadLayer({
             data-owner-id={existingRoad ? existingRoad.playerId : undefined}
             data-legal-target={isLegalTarget ? 'true' : undefined}
           >
-            {/* 1. Invisible Hitbox (Thicker than visible road for easier clicking) */}
+            {/* 1. Invisible hitbox, wider than the road so the edge is easy to hit. */}
             <line
               x1={start.pixelPos.x} y1={start.pixelPos.y}
               x2={end.pixelPos.x} y2={end.pixelPos.y}
               stroke="transparent"
-              strokeWidth="14"
+              strokeWidth="16"
+              pointerEvents={isLegalTarget ? 'stroke' : 'none'}
             />
 
             {/* 2. Legal target marker, then the piece itself previewed on hover. */}
@@ -100,8 +81,8 @@ export function RoadLayer({
                 <line
                   x1={start.pixelPos.x} y1={start.pixelPos.y}
                   x2={end.pixelPos.x} y2={end.pixelPos.y}
-                  stroke={previewColor ?? 'white'}
-                  strokeWidth="8"
+                  stroke={pieceShades(previewColor).base}
+                  strokeWidth="9"
                   strokeLinecap="round"
                   className="pointer-events-none opacity-0 transition-opacity group-hover:opacity-90"
                   data-cy="edge-preview"
@@ -109,28 +90,16 @@ export function RoadLayer({
               </>
             )}
 
-            {/* 3. Pending Road (Visual feedback for the 1st Road Building selection) */}
+            {/* 3. Pending road (visual feedback for the 1st Road Building selection). */}
             {isPending && (
               <line
                 x1={start.pixelPos.x} y1={start.pixelPos.y}
                 x2={end.pixelPos.x} y2={end.pixelPos.y}
-                stroke="#3b82f6" /* Tailwind blue-500 */
-                strokeWidth="8"
+                stroke={pieceShades(previewColor).top}
+                strokeWidth="9"
                 strokeLinecap="round"
                 strokeDasharray="8 6"
                 className="animate-pulse drop-shadow-lg pointer-events-none"
-              />
-            )}
-
-            {/* 4. Built Road */}
-            {existingRoad && (
-              <line
-                x1={start.pixelPos.x} y1={start.pixelPos.y}
-                x2={end.pixelPos.x} y2={end.pixelPos.y}
-                stroke={playerColors[existingRoad.playerId] ?? 'white'}
-                strokeWidth="8"
-                strokeLinecap="round"
-                className="drop-shadow-md pointer-events-none"
               />
             )}
           </g>

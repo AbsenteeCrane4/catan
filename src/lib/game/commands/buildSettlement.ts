@@ -1,6 +1,6 @@
 import { CommandHandler } from "./types";
 import { requireCurrentPlayer, withLog } from "@/lib/game/helpers/guards";
-import { canAfford, payCostFor, settlementBlockerAt } from "@/lib/game/helpers/buildLegality";
+import { canAfford, hasPiecesFor, payCostFor, settlementBlockerAt } from "@/lib/game/helpers/buildLegality";
 import { evaluateLongestRoad } from "@/lib/game/helpers/longestRoad";
 import { nameOf } from "@/lib/game/helpers/playerName";
 
@@ -19,6 +19,10 @@ export const buildSettlement: CommandHandler<'BUILD_SETTLEMENT'> = (state, actio
   if (spotBlocker === 'occupied') return state;
   if (spotBlocker === 'too-close') return withLog(state, "Too close to another settlement!");
   if (spotBlocker === 'unconnected') return withLog(state, "Must connect to a road!");
+
+  if (!hasPiecesFor(state, playerId, 'settlement')) {
+    return withLog(state, "You have no settlements left to build!");
+  }
 
   const isInitial = state.phase !== 'main';
   const player = state.players[playerId];

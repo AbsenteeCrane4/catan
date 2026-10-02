@@ -1,6 +1,6 @@
 import { CommandHandler } from "./types";
 import { requireMainPhase, requireCurrentPlayer, withLog } from "@/lib/game/helpers/guards";
-import { canAfford, cityBlockerAt, payCostFor } from "@/lib/game/helpers/buildLegality";
+import { canAfford, cityBlockerAt, hasPiecesFor, payCostFor } from "@/lib/game/helpers/buildLegality";
 import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const upgradeSettlement: CommandHandler<'UPGRADE_SETTLEMENT'> = (state, action) => {
@@ -17,6 +17,10 @@ export const upgradeSettlement: CommandHandler<'UPGRADE_SETTLEMENT'> = (state, a
   if (spotBlocker === 'no-settlement') return withLog(state, "No settlement here to upgrade.");
   if (spotBlocker === 'not-yours') return withLog(state, "You can only upgrade your own settlements.");
   if (spotBlocker === 'already-city') return withLog(state, "This is already a city.");
+
+  if (!hasPiecesFor(state, playerId, 'city')) {
+    return withLog(state, "You have no cities left to build!");
+  }
 
   const settlement = state.settlements[nodeId];
   const player = state.players[playerId];

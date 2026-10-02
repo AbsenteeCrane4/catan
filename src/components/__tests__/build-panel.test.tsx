@@ -61,9 +61,9 @@ describe('BuildPanel', () => {
     expect(screen.getByText('City')).toBeInTheDocument();
     expect(screen.getByText('Development Card')).toBeInTheDocument();
 
-    // A city is 3 ore and 2 wheat, drawn as two icons rather than five.
+    // A city is 3 ore and 2 wheat, drawn one chip per card.
     const cityIcons = option('city')!.querySelectorAll('[data-cy=resource-icon]');
-    expect(Array.from(cityIcons).map(el => el.getAttribute('data-resource'))).toEqual(['ore', 'wheat']);
+    expect(Array.from(cityIcons).map(el => el.getAttribute('data-resource'))).toEqual(['ore', 'ore', 'ore', 'wheat', 'wheat']);
   });
 
   it('enables everything a rich player can afford', () => {

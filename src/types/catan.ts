@@ -8,7 +8,7 @@ export type DevelopmentCardType = 'knight' | 'victoryPoint' | 'roadBuilding' | '
 export type YearOfPlentyArgs = { resource1: ResourceType; resource2: ResourceType };
 export type MonopolyArgs = { monopolyResource: ResourceType };
 export type KnightArgs = { robberHexId: string; robberTargetPlayerId?: number | null };
-export type RoadBuildingArgs = { road1: [string, string]; road2: [string, string] };
+export type RoadBuildingArgs = { road1: [string, string]; road2?: [string, string] };
 export type AnyCardArgs = YearOfPlentyArgs | MonopolyArgs | KnightArgs | RoadBuildingArgs;
 
 /** Which physical Catan set the board is built from. 5-6 players use the official extension. */

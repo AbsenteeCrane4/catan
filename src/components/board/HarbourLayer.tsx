@@ -7,9 +7,8 @@ interface HarbourLayerProps {
   nodes: GameNode[];
 }
 
-/** How far off the coast the port emblem floats. */
-const DISTANCE_OUT = HEX_SIZE * 0.72;
-const BADGE_RADIUS = 16;
+/** How far off the coast the trading post sits. */
+const DISTANCE_OUT = HEX_SIZE * 0.78;
 
 const WOOD = '#8B5A2B';
 const WOOD_DARK = '#4A2C14';
@@ -29,6 +28,16 @@ function textOn(background: string): string {
   return 0.299 * r + 0.587 * g + 0.114 * b > 140 ? '#3B2412' : '#FFF8EC';
 }
 
+/**
+ * Trading posts, built as part of the board rather than badges floating over it
+ * (`docs/DESIGN.md` §16): a planked jetty out from each of the two tradeable corners, a
+ * decked platform where they meet, and the ratio painted on a board mounted on it.
+ *
+ * Everything here stays flat on the board plane and foreshortens with the terrain, which
+ * is what makes it read as built structure. Only `<line>` elements may run from a node to
+ * the platform — the harbour spec identifies piers by exactly that, so planks and decking
+ * are drawn as paths and rects.
+ */
 export function HarbourLayer({ harbours, nodes }: HarbourLayerProps) {
   const byId = new Map(nodes.map(n => [n.id, n]));
 
@@ -69,14 +78,14 @@ export function HarbourLayer({ harbours, nodes }: HarbourLayerProps) {
             data-cy="harbour"
             data-harbour-type={harbour.type}
           >
-            {/* Two piers, one to each tradeable node. Drawn before the emblem so their
-                inner ends tuck underneath it. Three stacked round-capped strokes give a
-                dark edge, a wood body and a grain highlight without needing a gradient. */}
+            {/* Two jetties, one to each tradeable corner. Three stacked round-capped
+                strokes give a dark edge, a wood body and a grain highlight without
+                needing a gradient. */}
             {[a, b].map(node => (
               <g key={node.id}>
                 {[
-                  { w: 8, c: WOOD_DARK, o: 1 },
-                  { w: 5, c: WOOD, o: 1 },
+                  { w: 9, c: WOOD_DARK, o: 1 },
+                  { w: 6, c: WOOD, o: 1 },
                   { w: 1.5, c: WOOD_LIGHT, o: 0.5 },
                 ].map(({ w, c, o }) => (
                   <line
@@ -91,26 +100,45 @@ export function HarbourLayer({ harbours, nodes }: HarbourLayerProps) {
                     opacity={o}
                   />
                 ))}
+                <Planks
+                  from={node.pixelPos}
+                  to={{ x: cx, y: cy }}
+                />
               </g>
             ))}
 
             <g transform={`translate(${cx}, ${cy})`}>
-              <circle
-                r={BADGE_RADIUS}
+              {/* Decked platform: octagonal so it reads as built, not as a UI disc. */}
+              <path
+                d="M-8 -19 L8 -19 L19 -8 L19 8 L8 19 L-8 19 L-19 8 L-19 -8 Z"
+                fill={WOOD}
+                stroke={WOOD_DARK}
+                strokeWidth="2.5"
+              />
+              <path
+                d="M-15 -6 H15 M-15 0 H15 M-15 6 H15"
+                stroke={WOOD_DARK}
+                strokeWidth="1"
+                opacity="0.45"
+              />
+
+              {/* Mooring posts at the corners give the platform some height. */}
+              <circle cx="-14" cy="-11" r="2.6" fill={WOOD_LIGHT} stroke={WOOD_DARK} strokeWidth="1.4" />
+              <circle cx="14" cy="-11" r="2.6" fill={WOOD_LIGHT} stroke={WOOD_DARK} strokeWidth="1.4" />
+
+              {/* The ratio, painted on a board mounted on the deck. */}
+              <rect
+                x="-14"
+                y="-8"
+                width="28"
+                height="16"
+                rx="3"
                 fill={fill}
                 stroke={WOOD_DARK}
-                strokeWidth="3"
-                className="drop-shadow-md"
-              />
-              {/* Inner highlight reads as a raised wooden rim. */}
-              <circle
-                r={BADGE_RADIUS - 3}
-                fill="none"
-                stroke={WOOD_LIGHT}
-                strokeWidth="1.5"
-                opacity="0.55"
+                strokeWidth="2.2"
               />
               <text
+                y="0"
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize="12"
@@ -124,6 +152,30 @@ export function HarbourLayer({ harbours, nodes }: HarbourLayerProps) {
           </g>
         );
       })}
+    </g>
+  );
+}
+
+/** Cross planks along a jetty. Rects, never lines — see the note on `HarbourLayer`. */
+function Planks({ from, to }: { from: { x: number; y: number }; to: { x: number; y: number } }) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy);
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const count = Math.max(2, Math.round(length / 9));
+
+  return (
+    <g transform={`translate(${from.x}, ${from.y}) rotate(${angle})`} opacity="0.5">
+      {Array.from({ length: count - 1 }, (_, i) => (
+        <rect
+          key={i}
+          x={((i + 1) * length) / count - 0.5}
+          y={-4.5}
+          width="1.2"
+          height="9"
+          fill={WOOD_DARK}
+        />
+      ))}
     </g>
   );
 }

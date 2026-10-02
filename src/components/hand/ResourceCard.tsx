@@ -1,7 +1,7 @@
-import Image from "next/image";
 import { clsx } from "clsx";
 import type { ResourceType } from "@/types/catan";
-import { RESOURCE_CARD_IMAGES, RESOURCE_COLORS, RESOURCE_LABELS } from "@/lib/constants";
+import { RESOURCE_CARD_BORDERS, RESOURCE_LABELS } from "@/lib/constants";
+import { tileArtStyle } from "@/components/hud/primitives";
 
 interface ResourceCardProps {
   resource: ResourceType;
@@ -11,67 +11,42 @@ interface ResourceCardProps {
   justGained?: boolean;
 }
 
+/** Card size shared by every card in the hand bar; grows on tall screens. */
+export const HAND_CARD_SIZE =
+  "h-[112px] w-[79px] [@media(min-height:880px)]:h-[142px] [@media(min-height:880px)]:w-[100px]";
+
 /**
- * One resource type in the player's hand: a single card face carrying the count, not
- * `count` separate cards.
+ * One resource type in the player's hand: a single card carrying the count, not `count`
+ * separate cards.
  *
- * The face crops into the middle of the hex terrain art rather than fitting it. Those
- * source images are pointy-top hexes on transparency, so anything that shows the whole
- * image puts two transparent wedges across the top of the card; scaling past the frame
- * keeps only the painted interior.
+ * The face is the resource's tile illustration, full-bleed, with no label and no scrim —
+ * the art is the card. The source images are pointy-top hexes on transparency, so the art
+ * is zoomed past the hexagon's corners (see `tileArtStyle`).
  */
 export function ResourceCard({ resource, count, justGained = false }: ResourceCardProps) {
-  const stackDepth = Math.min(count - 1, 2);
-
   return (
     <div
       data-cy="hand-resource-card"
       data-resource={resource}
       data-count={count}
-      className="relative shrink-0"
       title={`${RESOURCE_LABELS[resource]} ×${count}`}
+      className={clsx(
+        "relative shrink-0 overflow-hidden rounded-lg border-2 bg-[#0d1b2e] shadow-[0_10px_24px_rgba(2,8,18,0.5)]",
+        "transition-transform duration-150 hover:-translate-y-1.5",
+        HAND_CARD_SIZE,
+        justGained && "animate-card-gain"
+      )}
+      style={{ borderColor: RESOURCE_CARD_BORDERS[resource] }}
     >
-      {/* Cards behind the face, so a stack reads as a stack before the badge is read. */}
-      {Array.from({ length: stackDepth }).map((_, i) => (
-        <div
-          key={i}
-          aria-hidden
-          className="absolute inset-0 rounded-lg border border-amber-100/25 bg-slate-800 shadow-md"
-          style={{ transform: `translate(${(i + 1) * 3}px, ${(i + 1) * -3}px) rotate(${(i + 1) * 2}deg)` }}
-        />
-      ))}
+      <span className="absolute inset-0" style={tileArtStyle(resource)} aria-hidden />
+      <span className="sr-only">{RESOURCE_LABELS[resource]}</span>
 
-      <div
-        className={clsx(
-          "relative h-[92px] w-[64px] overflow-hidden rounded-lg border-2 border-amber-100/70",
-          "shadow-[0_4px_10px_rgba(2,6,23,0.6)] transition-transform duration-150",
-          "hover:-translate-y-1.5 xl:h-[106px] xl:w-[74px]",
-          justGained && "animate-card-gain"
-        )}
-        style={{ backgroundColor: RESOURCE_COLORS[resource] }}
+      <span
+        data-cy="hand-resource-count"
+        className="absolute right-1.5 bottom-[5px] flex h-[22px] min-w-[22px] items-center justify-center rounded-[5px] bg-[rgba(6,14,28,0.5)] px-[5px] text-[15px] font-extrabold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]"
       >
-        <Image
-          src={RESOURCE_CARD_IMAGES[resource]}
-          alt=""
-          fill
-          sizes="74px"
-          className="scale-[1.6] object-cover object-center"
-        />
-
-        {/* Keeps the label readable over whatever part of the painting sits beneath it. */}
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-950/90 to-transparent" />
-
-        <span className="absolute inset-x-0 bottom-1 text-center text-[9px] font-black uppercase tracking-wider text-amber-50 drop-shadow">
-          {RESOURCE_LABELS[resource]}
-        </span>
-
-        <span
-          data-cy="hand-resource-count"
-          className="absolute -top-0.5 -right-0.5 min-w-[20px] rounded-bl-lg rounded-tr-md bg-slate-950/90 px-1.5 py-0.5 text-center text-[11px] font-black text-white ring-1 ring-inset ring-white/20"
-        >
-          {count}
-        </span>
-      </div>
+        {count}
+      </span>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { CommandHandler } from "./types";
 import { requireMainPhase, requireCurrentPlayer } from "@/lib/game/helpers/guards";
 import { nameOf } from "@/lib/game/helpers/playerName";
+import { bankRatio } from "@/lib/game/helpers/bankRatio";
 
 export const tradeWithBank: CommandHandler<'TRADE_WITH_BANK'> = (state, action) => {
   const { playerId, offerResource, requestResource } = action.payload;
@@ -11,21 +12,7 @@ export const tradeWithBank: CommandHandler<'TRADE_WITH_BANK'> = (state, action) 
   if (turnRejection) return turnRejection;
 
   const player = state.players[playerId];
-  let cost = 4; // Standard 4:1 trade ratio
-
-  const playerNodes = Object.values(state.settlements)
-    .filter(s => s.playerId === playerId)
-    .map(s => s.nodeId);
-
-  const ownedPorts = state.harbours.filter(h => h.nodeIds.some(id => playerNodes.includes(id)));
-
-  ownedPorts.forEach(port => {
-    if (port.type === '3:1') {
-      cost = 3;
-    } else if (port.type === offerResource) {
-      cost = 2;
-    }
-  });
+  const cost = bankRatio(state, playerId, offerResource);
 
   if (player.resources[offerResource] < cost) {
     return { ...state, gameLog: [`${nameOf(state, playerId)} doesn't have enough ${offerResource}!`, ...state.gameLog] };
