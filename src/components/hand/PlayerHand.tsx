@@ -23,6 +23,8 @@ interface PlayerHandProps {
 /** Discarding starts above this many cards on a 7, which is why the total is on screen. */
 const DISCARD_THRESHOLD = 7;
 
+const DEV_CARD_ORDER: DevelopmentCardType[] = ['knight', 'victoryPoint', 'monopoly', 'roadBuilding', 'yearOfPlenty'];
+
 /**
  * The viewing seat's own hand: identity, then the cards, inside the bottom hand bar.
  *
@@ -44,9 +46,19 @@ export function PlayerHand({ state, onPlayDevCard, onInitiateMapCard }: PlayerHa
 
   // playable and boughtThisTurn are the reducer's own split; the UI reports it rather
   // than maintaining a second idea of which cards are usable.
+  // One card per type and state, carrying a count. A Victory Point card is counted the
+  // moment it is bought, so it is never "bought this turn" in the player's eyes: both
+  // lists fold into one card, which is how a player sees how many they ended up with.
+  const tally = (types: DevelopmentCardType[]) =>
+    types.reduce<Partial<Record<DevelopmentCardType, number>>>((m, t) => ({ ...m, [t]: (m[t] ?? 0) + 1 }), {});
+  const heldDev = tally([
+    ...hand.devCards.playable,
+    ...hand.devCards.boughtThisTurn.filter(t => t === 'victoryPoint'),
+  ]);
+  const fresh = tally(hand.devCards.boughtThisTurn.filter(t => t !== 'victoryPoint'));
   const devCards = [
-    ...hand.devCards.playable.map(type => ({ type, boughtThisTurn: false })),
-    ...hand.devCards.boughtThisTurn.map(type => ({ type, boughtThisTurn: true })),
+    ...DEV_CARD_ORDER.filter(type => heldDev[type]).map(type => ({ type, count: heldDev[type]!, boughtThisTurn: false })),
+    ...DEV_CARD_ORDER.filter(type => fresh[type]).map(type => ({ type, count: fresh[type]!, boughtThisTurn: true })),
   ];
 
   const lockReasonFor = (card: { type: DevelopmentCardType; boughtThisTurn: boolean }): string | null => {
@@ -137,6 +149,7 @@ export function PlayerHand({ state, onPlayDevCard, onInitiateMapCard }: PlayerHa
                   <DevCard
                     key={`${card.type}-${card.boughtThisTurn ? 'new' : 'held'}-${i}`}
                     type={card.type}
+                    count={card.count}
                     lockReason={lockReason}
                     onPlay={
                       isPlayableCardType(card.type) && lockReason === null

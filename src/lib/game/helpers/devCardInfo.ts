@@ -21,11 +21,11 @@ export const DEV_CARD_INFO: Record<DevelopmentCardType, DevCardInfo> = {
   },
   victoryPoint: {
     name: 'Victory Point',
-    description: 'Worth 1 point. Never played.',
+    description: 'Worth 1 point, counted the moment you buy it.',
   },
   roadBuilding: {
     name: 'Road Building',
-    description: 'Build 2 roads for free.',
+    description: 'Build 2 roads for free (1 if it is your last).',
   },
   yearOfPlenty: {
     name: 'Year of Plenty',

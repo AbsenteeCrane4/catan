@@ -132,6 +132,45 @@ describe('PlayerHand', () => {
       expect(card?.querySelector('[data-cy=play-dev-card-btn]')).toBeNull();
     });
 
+    it('stacks duplicates into one card per type with a count', () => {
+      renderHand(viewFor(0, withHand(0, {}, { playable: ['knight', 'knight', 'knight', 'monopoly'] })));
+
+      expect(document.querySelectorAll('[data-cy=hand-dev-card]')).toHaveLength(2);
+      expect(devCardFor('knight')).toHaveAttribute('data-count', '3');
+      expect(devCardFor('knight')?.querySelector('[data-cy=hand-dev-card-count]')).toHaveTextContent('3');
+      expect(devCardFor('monopoly')).toHaveAttribute('data-count', '1');
+    });
+
+    it('gives each card type its own face', () => {
+      renderHand(
+        viewFor(0, withHand(0, {}, { playable: ['knight', 'monopoly', 'roadBuilding', 'yearOfPlenty', 'victoryPoint'] }))
+      );
+
+      const names = Array.from(document.querySelectorAll('[data-cy=hand-dev-card] svg text')).map(t => t.textContent);
+      expect(new Set(names).size).toBe(5);
+      expect(names).toContain('VICTORY POINT');
+    });
+
+    it('keeps bought-this-turn cards apart from ones that can be played', () => {
+      renderHand(viewFor(0, withHand(0, {}, { playable: ['knight'], boughtThisTurn: ['knight'] })));
+
+      const knights = document.querySelectorAll('[data-cy=hand-dev-card][data-card-type=knight]');
+      expect(knights).toHaveLength(2);
+      expect(Array.from(knights).map(k => k.getAttribute('data-playable')).sort()).toEqual(['false', 'true']);
+    });
+
+    it('counts Victory Points as soon as they are bought, as one card with the total', () => {
+      renderHand(
+        viewFor(0, withHand(0, {}, { playable: ['victoryPoint'], boughtThisTurn: ['victoryPoint', 'victoryPoint'] }))
+      );
+
+      const cards = document.querySelectorAll('[data-cy=hand-dev-card][data-card-type=victoryPoint]');
+      expect(cards).toHaveLength(1);
+      expect(cards[0]).toHaveAttribute('data-count', '3');
+      expect(cards[0]).toHaveAttribute('data-locked', 'false');
+      expect(cards[0]).not.toHaveTextContent('Bought this turn');
+    });
+
     it('sends a road building card to the board rather than playing it outright', () => {
       const { onPlayDevCard, onInitiateMapCard } = renderHand(
         viewFor(0, withHand(0, {}, { playable: ['roadBuilding'] }))
