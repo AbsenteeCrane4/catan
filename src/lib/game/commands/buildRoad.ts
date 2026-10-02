@@ -1,7 +1,7 @@
 import { CommandHandler } from "./types";
 import { requireCurrentPlayer, withLog } from "@/lib/game/helpers/guards";
 import { isValidRoadPlacement } from "@/lib/game/helpers/board";
-import { canAfford, edgeId, payCostFor } from "@/lib/game/helpers/buildLegality";
+import { canAfford, edgeId, hasPiecesFor, payCostFor } from "@/lib/game/helpers/buildLegality";
 import { evaluateLongestRoad } from "@/lib/game/helpers/longestRoad";
 import { nameOf } from "@/lib/game/helpers/playerName";
 
@@ -21,6 +21,10 @@ export const buildRoad: CommandHandler<'BUILD_ROAD'> = (state, action) => {
   // highlighted edge is by construction an edge this handler accepts.
   if (!isValidRoadPlacement(nodeId1, nodeId2, playerId, state)) {
     return withLog(state, "Road must connect!");
+  }
+
+  if (!hasPiecesFor(state, playerId, 'road')) {
+    return withLog(state, "You have no roads left to build!");
   }
 
   const isInitial = state.phase !== 'main';

@@ -289,10 +289,9 @@ describe('build legality selectors', () => {
     });
 
     /**
-     * Two rules the printed game has and this reducer does not. The selector applies them
-     * so the UI matches Catan, and both are conservative — they only ever withhold an
-     * action, never permit one the reducer would reject. Adding either to the reducer
-     * would change its behaviour, which #54 rules out.
+     * A rule the printed game has and this reducer does not: rolling before building. The
+     * selector applies it so the UI matches Catan; it only ever withholds an action. The
+     * piece supply is enforced by the reducer too (see piece-supply.test.ts).
      */
     describe('rules the UI enforces ahead of the reducer', () => {
       it('withholds building until the dice have been rolled', () => {

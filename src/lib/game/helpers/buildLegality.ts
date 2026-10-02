@@ -166,6 +166,17 @@ export const piecesRemaining = (
   };
 };
 
+/**
+ * Whether the player's supply covers placing `count` more of this piece. The reducer's
+ * build commands call this, so the supply is a rule of the game and not only of the UI.
+ */
+export const hasPiecesFor = (
+  state: Pick<BuildStateLike, 'roads' | 'settlements'>,
+  playerId: number,
+  kind: PlaceableKind,
+  count = 1
+): boolean => piecesRemaining(state, playerId)[kind] >= count;
+
 /** Which resources the player is short of for this item, and by how much. */
 export const missingResourcesFor = (
   resources: Record<ResourceType, number>,
@@ -274,16 +285,14 @@ export const legalTargets = (
 /**
  * May this player build this right now, and if not, why not.
  *
- * Two of the reasons are stricter than the reducer, on purpose:
+ * One reason is stricter than the reducer, on purpose:
  *
  * - `dice-not-rolled`: real Catan makes you roll before you build, and the reducer does
  *   not enforce it (`buildRoad`/`buildSettlement` check only turn and phase).
- * - `no-pieces-remaining`: the reducer tracks no piece supply at all.
  *
- * Both are reported here so the UI matches the printed rules, and both are conservative:
- * this function never permits something the reducer would reject, which is the direction
- * that matters. Adding either check to the reducer would change its behaviour, which
- * issue #54 explicitly rules out — they are tracked separately instead.
+ * It is conservative: this function never permits something the reducer would reject,
+ * which is the direction that matters. `no-pieces-remaining` is not in that category —
+ * the reducer enforces the supply too, through `hasPiecesFor`.
  */
 export const canBuild = (
   state: BuildStateLike,

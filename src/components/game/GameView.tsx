@@ -8,6 +8,7 @@ import {
   edgeId,
   isPlaceable,
   legalTargets,
+  piecesRemaining,
   type BuildKind,
   type PlaceableKind,
 } from '@/lib/game/helpers/buildLegality';
@@ -195,9 +196,13 @@ export function GameView({ state, performAction, onLeave }: GameViewProps) {
       const newRoad: [string, string] = [n1, n2];
       const updatedPending = [...pendingRoadBuildingRoads, newRoad];
 
-      if (updatedPending.length === 1) {
+      // A player down to their last road gets one free road, not two.
+      const roadsLeft = piecesRemaining(state, myPlayerIndex).road;
+      const placementsNeeded = Math.min(2, roadsLeft);
+
+      if (updatedPending.length < placementsNeeded) {
         setPendingRoadBuildingRoads(updatedPending);
-      } else if (updatedPending.length === 2) {
+      } else {
         performAction({
           type: 'PLAY_DEV_CARD',
           payload: {
