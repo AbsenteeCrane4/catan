@@ -1,5 +1,6 @@
 import { CommandHandler } from "./types";
-import { requireMainPhase, requireCurrentPlayer } from "@/lib/game/helpers/guards";
+import { requireMainPhase, requireCurrentPlayer, withLog } from "@/lib/game/helpers/guards";
+import { canAfford, payCostFor } from "@/lib/game/helpers/buildLegality";
 import { nameOf } from "@/lib/game/helpers/playerName";
 
 export const buyDevCard: CommandHandler<'BUY_DEV_CARD'> = (state, action) => {
@@ -10,14 +11,14 @@ export const buyDevCard: CommandHandler<'BUY_DEV_CARD'> = (state, action) => {
   const turnRejection = requireCurrentPlayer(state, playerId, "It's not your turn!");
   if (turnRejection) return turnRejection;
   if (!state.devCardDeck || state.devCardDeck.length === 0) {
-    return { ...state, gameLog: ["The Development Card deck is empty!", ...state.gameLog] };
+    return withLog(state, "The Development Card deck is empty!");
   }
 
   const player = state.players[playerId];
 
   // Cost: 1 Sheep, 1 Wheat, 1 Ore
-  if (player.resources.sheep < 1 || player.resources.wheat < 1 || player.resources.ore < 1) {
-    return { ...state, gameLog: ["Not enough resources to buy a Development Card.", ...state.gameLog] };
+  if (!canAfford(player.resources, 'devCard')) {
+    return withLog(state, "Not enough resources to buy a Development Card.");
   }
 
   const newDeck = [...state.devCardDeck];
@@ -26,12 +27,7 @@ export const buyDevCard: CommandHandler<'BUY_DEV_CARD'> = (state, action) => {
   const updatedPlayers = [...state.players];
   updatedPlayers[playerId] = {
     ...player,
-    resources: {
-      ...player.resources,
-      sheep: player.resources.sheep - 1,
-      wheat: player.resources.wheat - 1,
-      ore: player.resources.ore - 1,
-    },
+    resources: payCostFor(player.resources, 'devCard'),
     devCards: {
       ...player.devCards,
       boughtThisTurn: [...player.devCards.boughtThisTurn, drawnCard]

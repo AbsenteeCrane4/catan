@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Hex } from "@/types/catan";
 import { hexToPixel } from "@/lib/hex-utils";
 import { HEX_RESOURCE_COLORS, HEX_SIZE, HEX_TILE_IMAGES } from "@/lib/constants";
+import { HEX_POLYGON_POINTS } from "@/lib/board/geometry";
 import { clsx } from "clsx";
 
 interface HexTileProps {
@@ -9,14 +10,6 @@ interface HexTileProps {
   isSelectable?: boolean;
   onClick?: () => void;
 }
-
-// Calculate polygon points
-const points: [number, number][] = [];
-for (let i = 0; i < 6; i++) {
-  const angle_rad = (Math.PI / 180) * (60 * i);
-  points.push([HEX_SIZE * Math.sin(angle_rad), HEX_SIZE * Math.cos(angle_rad)]);
-}
-const POLYGON_POINTS = points.map(([x, y]) => `${x},${y}`).join(" ");
 
 // The source PNGs are pre-normalized (see scripts/normalize-tile-art) so every tile's
 // painted hexagon exactly fills its canvas — the image can be placed straight onto the
@@ -26,6 +19,12 @@ const IMAGE_HEIGHT = 2 * HEX_SIZE;
 const IMAGE_X = -IMAGE_WIDTH / 2;
 const IMAGE_Y = -IMAGE_HEIGHT / 2;
 
+/**
+ * One terrain tile on the board plane.
+ *
+ * The number token is drawn by `PieceLayer`'s `NumberTokens`, above the harbours;
+ * `data-token` stays on this element, where the specs read it.
+ */
 export function HexTile({ hex, isSelectable, onClick }: HexTileProps) {
   const { x, y } = hexToPixel(hex.q, hex.r);
   const [imageFailed, setImageFailed] = useState(false);
@@ -37,7 +36,7 @@ export function HexTile({ hex, isSelectable, onClick }: HexTileProps) {
       transform={`translate(${x}, ${y})`}
       className={clsx(
         "group transition-all duration-300",
-        isSelectable && "cursor-pointer hover:brightness-125 hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]"
+        isSelectable && "cursor-pointer hover:brightness-125"
       )}
       onClick={isSelectable ? onClick : undefined}
       data-cy="hex"
@@ -45,15 +44,16 @@ export function HexTile({ hex, isSelectable, onClick }: HexTileProps) {
       data-resource={hex.resource}
       data-token={hex.numberToken ?? undefined}
       data-image-failed={imageFailed || undefined}
+      data-legal-target={isSelectable ? 'true' : undefined}
     >
       {!imageFailed && (
         <clipPath id={clipId}>
-          <polygon points={POLYGON_POINTS} />
+          <polygon points={HEX_POLYGON_POINTS} />
         </clipPath>
       )}
 
       <polygon
-        points={POLYGON_POINTS}
+        points={HEX_POLYGON_POINTS}
         fill={imageFailed ? HEX_RESOURCE_COLORS[hex.resource] : "transparent"}
         data-cy={imageFailed ? "hex-fallback-fill" : undefined}
       />
@@ -73,33 +73,29 @@ export function HexTile({ hex, isSelectable, onClick }: HexTileProps) {
         />
       )}
 
+      {/* Seam between neighbouring tiles: dark enough to separate them, light enough not
+          to draw a grid over the terrain. */}
       <polygon
-        points={POLYGON_POINTS}
+        points={HEX_POLYGON_POINTS}
         fill="none"
-        stroke="rgba(20, 15, 10, 0.35)"
-        strokeWidth="1.5"
-        className={clsx(
-          "transition-opacity",
-          !isSelectable && "hover:opacity-90 cursor-pointer"
-        )}
+        stroke="rgba(28, 20, 10, 0.42)"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        className="pointer-events-none"
       />
-      {hex.resource !== 'desert' && (
-        <g className="pointer-events-none">
-          <circle r="16" fill="navajowhite" className="opacity-90 shadow-sm" />
-          <text
-            y="5" textAnchor="middle"
-            className={clsx(
-              "text-[14px] font-bold font-serif select-none",
-              (hex.numberToken === 6 || hex.numberToken === 8) ? "fill-red-600" : "fill-slate-900"
-            )}
-          >
-            {hex.numberToken}
-          </text>
-           {/* Probability Dots */}
-           <text y="14" textAnchor="middle" fontSize="8" fill="#333">
-              {Array.from({length: 6 - Math.abs(7 - (hex.numberToken || 0))}).map(() => '.').join('')}
-           </text>
-        </g>
+
+      {/* A legal robber destination, marked in the same language as buildable nodes and
+          edges so "you may click this" reads identically everywhere on the board. */}
+      {isSelectable && (
+        <polygon
+          points={HEX_POLYGON_POINTS}
+          fill="rgba(251, 191, 36, 0.16)"
+          stroke="#fbbf24"
+          strokeWidth="4"
+          strokeLinejoin="round"
+          className="legal-target-pulse pointer-events-none"
+          data-cy="legal-hex-marker"
+        />
       )}
     </g>
   );

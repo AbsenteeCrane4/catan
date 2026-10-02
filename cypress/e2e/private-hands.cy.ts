@@ -34,19 +34,31 @@ describe('Private hands', () => {
     cy.get('[data-cy=roll-dice-btn]').should('be.enabled');
   };
 
-  it('renders own cards by type and an opponent as a face-down count', () => {
+  it('renders own cards as card faces and an opponent as a face-down count', () => {
     cy.createGameAsHost('Alice', 'blue').then(gameId => {
       cy.addBot('bob', gameId, 'Bob', 'red', 2);
       cy.get('[data-cy=start-game-btn]').should('be.enabled').click();
 
       playSetupDraft();
 
-      // Alice's own seat: all five resource types broken out.
-      cy.get('[data-cy=sidebar-player][data-player-id="0"] [data-cy=own-resource]')
-        .should('have.length', 5);
+      // Alice's own hand, in the bottom HUD: a card face per resource type she actually
+      // holds, and a total that agrees with the counts on those cards.
+      cy.get('[data-cy=player-hand]').should('be.visible');
+      cy.get('[data-cy=hand-resource-card]')
+        .should('have.length.greaterThan', 0)
+        .then($cards => {
+          const counts = Cypress._.map($cards.toArray(), el => Number(el.getAttribute('data-count')));
+          // A card is only drawn for a resource actually held, never as an empty slot.
+          counts.forEach(count => expect(count, 'cards on a face').to.be.greaterThan(0));
+
+          const total = counts.reduce((sum, n) => sum + n, 0);
+          cy.get('[data-cy=hand-total]').should('have.attr', 'data-total', String(total));
+        });
 
       // Bob's seat: a count, and not one word about what the cards are.
       cy.get('[data-cy=sidebar-player][data-player-id="1"] [data-cy=own-resource]')
+        .should('not.exist');
+      cy.get('[data-cy=sidebar-player][data-player-id="1"] [data-cy=hand-resource-card]')
         .should('not.exist');
       cy.get('[data-cy=sidebar-player][data-player-id="1"]')
         .find('[data-resource]')
@@ -106,8 +118,7 @@ describe('Private hands', () => {
       // localStorage clientId, so the hand that returns must still be Alice's.
       cy.reload();
 
-      cy.get('[data-cy=sidebar-player][data-player-id="0"] [data-cy=own-resource]')
-        .should('have.length', 5);
+      cy.get('[data-cy=hand-resource-card]').should('have.length.greaterThan', 0);
       cy.get('[data-cy=sidebar-player][data-player-id="1"] [data-cy=hidden-hand]')
         .should('exist');
       cy.get('[data-cy=sidebar-player][data-player-id="1"] [data-cy=own-resource]')
@@ -136,6 +147,7 @@ describe('Private hands', () => {
     // No seat is "you", so no hand is ever revealed — and nothing crashes rendering it.
     cy.get('[data-cy=sidebar-player]').should('have.length', 2);
     cy.get('[data-cy=own-resource]').should('not.exist');
+    cy.get('[data-cy=player-hand]').should('not.exist');
     cy.get('[data-cy=hidden-hand]').should('have.length', 2);
     cy.get('[data-cy=spectator-panel]').should('be.visible');
   });
