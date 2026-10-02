@@ -10,7 +10,59 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-hud: var(--font-archivo), system-ui, sans-serif;
+
+  /* Horizon Settlers HUD tokens (design handoff). Static names so Tailwind can see them. */
+  --color-hs-abyss: #060e1c;
+  --color-hs-panel-top: #0d1c31;
+  --color-hs-panel-bot: #091426;
+  --color-hs-inset: #142844;
+  --color-hs-bar-top: #0b1a2e;
+  --color-hs-bar-bot: #081426;
+  --color-hs-text: #e8eef7;
+  --color-hs-dim: #a8bdd6;
+  --color-hs-mute: #8ba3c0;
+  --color-hs-accent: #4da3ff;
+  --color-hs-ok: #4ade80;
+  --color-hs-warn: #f87171;
+  --color-hs-parchment: #f2e3c4;
+  --color-hs-parchment-2: #e3cfa2;
 }
+
+/* Panel chrome shared by every floating HUD card. */
+.hs-panel {
+  background: linear-gradient(180deg, rgba(13, 28, 49, 0.94), rgba(9, 20, 38, 0.94));
+  border: 1px solid rgba(110, 160, 220, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(2, 8, 18, 0.55);
+}
+
+.hs-bar {
+  background: linear-gradient(180deg, #0b1a2e, #081426);
+}
+
+.hs-primary-btn {
+  color: #fff;
+  background: linear-gradient(180deg, #3b8dff, #1f66e0);
+  border: 1px solid rgba(150, 200, 255, 0.35);
+  box-shadow: 0 12px 30px rgba(24, 86, 180, 0.5);
+}
+
+.hs-primary-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.hs-primary-btn:disabled {
+  color: #8ba3c0;
+  background: rgba(20, 40, 68, 0.5);
+  border-color: rgba(110, 160, 220, 0.16);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.hs-scroll::-webkit-scrollbar { width: 6px; }
+.hs-scroll::-webkit-scrollbar-thumb { background: rgba(120, 165, 225, 0.3); border-radius: 3px; }
+.hs-scroll::-webkit-scrollbar-track { background: transparent; }
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -39,8 +91,19 @@ body {
   animation: card-gain 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+@keyframes dice-roll {
+  0% { transform: rotate(-200deg) scale(0.6); opacity: 0; }
+  60% { transform: rotate(12deg) scale(1.06); opacity: 1; }
+  100% { transform: none; }
+}
+
+.animate-dice-roll {
+  animation: dice-roll 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-card-gain {
+  .animate-card-gain,
+  .animate-dice-roll {
     animation: none;
   }
 }
@@ -69,9 +132,8 @@ body {
 /**
  * A piece being set down on the board (docs/DESIGN.md §30, issue #55).
  *
- * Applied to the sprite inside a billboard, never to the billboard itself — that
- * element's transform is what stands the piece up, and an animation on `transform`
- * would override it.
+ * Applied to an inner group of the piece, never to the group carrying its board
+ * position — an animation on `transform` would override that placement.
  */
 @keyframes piece-drop {
   0% { opacity: 0; transform: translateY(-16px) scale(0.85); }
@@ -93,20 +155,9 @@ body {
   animation: piece-fade 260ms ease-out;
 }
 
-/** The ghost piece under the pointer, held just off the board. */
-@keyframes piece-hover {
-  0%, 100% { transform: translateY(-2px); }
-  50% { transform: translateY(-6px); }
-}
-
-.animate-piece-hover {
-  animation: piece-hover 1.5s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .animate-piece-drop,
-  .animate-piece-fade,
-  .animate-piece-hover {
+  .animate-piece-fade {
     animation: none;
   }
 }

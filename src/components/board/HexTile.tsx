@@ -22,9 +22,8 @@ const IMAGE_Y = -IMAGE_HEIGHT / 2;
 /**
  * One terrain tile on the board plane.
  *
- * The number token is deliberately not here: on a tilted board it would foreshorten with
- * the terrain and stop being legible, so it stands up in the billboard layer instead
- * (`docs/DESIGN.md` §14). `data-token` stays on this element, where the specs read it.
+ * The number token is drawn by `PieceLayer`'s `NumberTokens`, above the harbours;
+ * `data-token` stays on this element, where the specs read it.
  */
 export function HexTile({ hex, isSelectable, onClick }: HexTileProps) {
   const { x, y } = hexToPixel(hex.q, hex.r);

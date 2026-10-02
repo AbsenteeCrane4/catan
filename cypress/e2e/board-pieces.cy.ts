@@ -1,16 +1,11 @@
 /**
- * The three.js piece layer (issue #55).
+ * The piece layer on the flat board.
  *
- * The pieces are drawn on a canvas over the board, so they cannot be asserted on
- * directly. What can be asserted is everything that has to be true around them:
+ * Pieces are SVG drawn over the board and never take the pointer, so what matters is:
  *
- * - the 3D layer actually starts, and the flat stand-ins step aside when it does
- * - the canvas never intercepts the pointer, which is what keeps every board
- *   interaction and every other spec working exactly as before
+ * - every board interaction still reaches the spot underneath a piece
  * - the pieces are placed from the game's own coordinates
- *
- * The shape and size of the meshes themselves are covered by `pieces3d.test.ts`, which
- * measures them without needing a graphics context.
+ * - a piece appears for every settlement the game records
  */
 
 const startGame = () =>
@@ -31,70 +26,45 @@ describe('Board pieces', () => {
   afterEach(() => cy.task('disposeBots'));
   beforeEach(startGame);
 
-  it('renders the pieces in 3D and stands the flat fallback down', () => {
-    cy.get('[data-cy=piece-canvas]').should('have.attr', 'data-webgl', 'on');
-    cy.get('[data-cy=piece-fallback]').should('not.be.visible');
-
-    // The drawing buffer has to match the board region, or the pieces land off the board.
-    cy.get('[data-cy=piece-canvas]').then($canvas => {
-      const canvas = $canvas[0] as HTMLCanvasElement;
-      const box = canvas.getBoundingClientRect();
-      cy.get('[data-cy=tabletop-scene]').then($scene => {
-        const scene = $scene[0].getBoundingClientRect();
-        expect(Math.round(box.width)).to.equal(Math.round(scene.width));
-        expect(Math.round(box.height)).to.equal(Math.round(scene.height));
-      });
-      expect(canvas.width).to.be.greaterThan(0);
-      expect(canvas.height).to.be.greaterThan(0);
-    });
-  });
-
-  it('never lets the piece canvas take a click away from the board', () => {
-    cy.get('[data-cy=piece-canvas]').should('have.css', 'pointer-events', 'none');
-
-    // The proof that matters: a settlement can still be placed with the canvas on top.
+  it('never lets a piece take a click away from the board', () => {
+    cy.get('[data-cy=board-piece]').should('have.length', 0);
     cy.get('[data-cy=turn-indicator]').should('contain.text', 'Your Turn');
-    cy.get('[data-cy=node][data-legal-target=true]').first().click({ force: true });
+
+    // A real (unforced) click at the node's on-screen position: if anything were drawn
+    // over it and took the pointer, this would hit that instead.
+    cy.get('[data-cy=node][data-legal-target=true]').first().click();
     cy.get('[data-cy=node][data-owner-id="0"]').should('have.length', 1);
+    cy.get('[data-cy=board-piece]').should('have.css', 'pointer-events', 'none');
+
+    // The road from it goes down the same way, with the settlement standing beside it.
+    // A sloped edge: Cypress treats a vertical SVG line's zero-width box as invisible.
+    const x = (nodeId: string) => nodeId.split('-').filter(Boolean)[1];
+    cy.get('[data-cy=edge][data-legal-target=true]')
+      .filter((_, el) => x(el.getAttribute('data-node-1')!) !== x(el.getAttribute('data-node-2')!))
+      .first()
+      .click();
+    cy.get('[data-cy=edge][data-owner-id="0"]').should('have.length', 1);
   });
 
   it('stands the robber on the hex the game says it is on', () => {
-    // A piece's board coordinate and a hex's are the same coordinate system — the one
-    // the reducer uses. The tokens and the numbered hexes are the same hexes in the same
-    // order, so pairing them gives the fixed offset between board and view space, and
-    // that offset has to be the same for every one of them.
+    cy.get('[data-cy=hex][data-resource=desert]').then($desert => {
+      const [x, y] = translation($desert[0]);
+      cy.get('[data-cy=robber]').should('have.attr', 'data-x', String(x)).and('have.attr', 'data-y', String(y));
+    });
+  });
+
+  it('puts each number token on its hex', () => {
     cy.get('[data-cy=hex][data-token]').then($hexes => {
       cy.get('[data-cy=number-token]').then($tokens => {
         expect($tokens.length, 'a token per numbered hex').to.equal($hexes.length);
-
-        const offsets = Array.from($tokens).map((token, i) => {
-          const [hx, hy] = translation($hexes[i]);
-          const el = token as HTMLElement;
-          return [hx - parseFloat(el.style.left), hy - parseFloat(el.style.top)] as const;
-        });
-
-        const [dx, dy] = offsets[0];
-        for (const [ox, oy] of offsets) {
-          expect(ox, 'one board-to-view offset for the whole board').to.be.closeTo(dx, 0.5);
-          expect(oy).to.be.closeTo(dy, 0.5);
-        }
-
-        cy.get('[data-cy=hex][data-resource=desert]').then($desert => {
-          const [desertX, desertY] = translation($desert[0]);
-
-          cy.get('[data-cy=robber]').then($robber => {
-            const robber = $robber[0] as HTMLElement;
-            expect(parseFloat(robber.style.left) + dx, 'robber x').to.be.closeTo(desertX, 0.5);
-            expect(parseFloat(robber.style.top) + dy, 'robber y').to.be.closeTo(desertY, 0.5);
-          });
+        Array.from($tokens).forEach((token, i) => {
+          expect(translation(token)).to.deep.equal(translation($hexes[i]));
         });
       });
     });
   });
 
-  it('adds a piece for every settlement and road the game records', () => {
-    cy.get('[data-cy=board-piece]').should('have.length', 0);
-
+  it('adds a piece for every settlement the game records', () => {
     cy.get('[data-cy=turn-indicator]').should('contain.text', 'Your Turn');
     cy.placeSettlementAndRoad(0);
 

@@ -20,11 +20,9 @@ interface RoadLayerProps {
 
 /**
  * The interactive half of the roads: click targets, legal-target markers, the hover
- * preview, the pending Road Building selection, and the shadow each built road casts.
+ * preview and the pending Road Building selection.
  *
- * The road bodies themselves are three.js meshes on the layer above, which is also what
- * casts their shadows. `RoadBodies` below is the flat stand-in for a browser with no
- * WebGL context.
+ * The built road pieces themselves are drawn by `PieceLayer`.
  */
 export function RoadLayer({
   nodes,
@@ -105,48 +103,6 @@ export function RoadLayer({
               />
             )}
           </g>
-        );
-      })}
-    </g>
-  );
-}
-
-/**
- * One horizontal slice through the built roads.
- *
- * Stacking a few of these at rising Z is what gives a road thickness: the lower, wider
- * slices become its sides and the narrow top slice becomes the lit crown
- * (`docs/DESIGN.md` §12).
- */
-export function RoadBodies({
-  nodes,
-  roads,
-  playerColors,
-  shade,
-  width,
-}: {
-  nodes: GameNode[];
-  roads: Record<string, Road>;
-  playerColors: Record<number, PlayerColor>;
-  shade: 'top' | 'base' | 'side' | 'edge';
-  width: number;
-}) {
-  return (
-    <g>
-      {boardEdges(nodes).map(({ id, a: start, b: end }) => {
-        const road = roads[id];
-        if (!road) return null;
-
-        return (
-          <line
-            key={id}
-            x1={start.pixelPos.x} y1={start.pixelPos.y}
-            x2={end.pixelPos.x} y2={end.pixelPos.y}
-            stroke={pieceShades(playerColors[road.playerId])[shade]}
-            strokeWidth={width}
-            strokeLinecap="round"
-            className="animate-piece-fade"
-          />
         );
       })}
     </g>

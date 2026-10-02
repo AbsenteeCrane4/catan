@@ -8,11 +8,10 @@ import {
   boardEdges,
   boardView,
   islandPath,
-  toViewSpace,
 } from '@/lib/board/geometry';
 
 /**
- * The geometry the tabletop renderer draws from.
+ * The geometry the board renderer draws from.
  *
  * It is worth testing separately from the components because it is the join between the
  * reducer's coordinates and the picture: if any of this drifts, pieces land somewhere the
@@ -132,13 +131,6 @@ describe('board geometry', () => {
       const view = boardView([]);
       expect(view.w).toBeGreaterThan(0);
       expect(view.h).toBeGreaterThan(0);
-    });
-  });
-
-  describe('toViewSpace', () => {
-    it('puts the top-left of the view at the origin of the box', () => {
-      const view = boardView(baseBoard().nodes);
-      expect(toViewSpace(view, view.minX, view.minY)).toEqual({ left: 0, top: 0 });
     });
   });
 

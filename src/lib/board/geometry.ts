@@ -4,7 +4,7 @@ import { edgeId } from '@/lib/game/helpers/buildLegality';
 import { hexToPixel } from '@/lib/hex-utils';
 
 /**
- * Pure board geometry for the tabletop renderer.
+ * Pure board geometry for the board renderer.
  *
  * Everything here is derived from the same `HEX_SIZE` and axial coordinates the reducer
  * already knows about — the renderer never invents positions of its own, so a piece can
@@ -75,10 +75,6 @@ export function boardView(nodes: readonly GameNode[], pad = HEX_SIZE * 1.45): Bo
   return { minX, minY, w: Math.max(...xs) + pad - minX, h: Math.max(...ys) + pad - minY };
 }
 
-/** Board-unit point to a position within the `boardView` box, for absolutely-placed pieces. */
-export function toViewSpace(view: BoardView, x: number, y: number) {
-  return { left: x - view.minX, top: y - view.minY };
-}
 
 export interface BoardEdge {
   id: string;
@@ -110,16 +106,4 @@ export function boardEdges(nodes: readonly GameNode[]): BoardEdge[] {
   }
 
   return edges;
-}
-
-/**
- * Board coordinates to the 3D scene's local space.
- *
- * The board element is transformed about its own centre, so the scene's origin is the
- * middle of the board box rather than its corner. Screen y runs downwards and three.js y
- * runs upwards, hence the flip — which is also what makes a piece's height +z, straight
- * out of the board.
- */
-export function toSceneSpace(view: BoardView, x: number, y: number): [number, number] {
-  return [x - view.minX - view.w / 2, view.h / 2 - (y - view.minY)];
 }

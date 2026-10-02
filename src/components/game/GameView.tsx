@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { AnyCardArgs, DevelopmentCardType, GameAction, GameStateView } from '@/types/catan';
 import { ownHand } from '@/lib/game/helpers/playerView';
 import {
@@ -14,11 +14,35 @@ import {
 import { BuildPanel } from '@/components/build/BuildPanel';
 import { clsx } from 'clsx';
 import { GameBoard } from '@/components/board/GameBoard';
-import { PlayerSidebar } from '@/components/ui/PlayerSidebar';
-import { PlayerHand } from '@/components/hand/PlayerHand';
-import { TradeUI } from '@/components/ui/TradeUI';
+import { TopBar } from '@/components/hud/TopBar';
+import { PlayersPanel } from '@/components/hud/PlayersPanel';
+import { TradePanel } from '@/components/hud/TradePanel';
+import { ActivityLog } from '@/components/hud/ActivityLog';
+import { HandBar } from '@/components/hud/HandBar';
 import { StealModal } from '@/components/ui/StealModal';
 import { GameOverModal } from '@/components/ui/GameOverModal';
+
+/** A floating HUD column. Widths and the board inset below must agree. */
+const PANEL_COLUMN =
+  "hs-scroll pointer-events-none absolute top-4 bottom-4 z-10 flex w-[280px] flex-col gap-3.5 overflow-y-auto xl:w-[330px] [&>*]:pointer-events-auto";
+
+const WIDE = '(min-width: 1280px)';
+
+/** Panel width plus its 16px margin, per breakpoint — what the board is fitted between. */
+function usePanelInset(): number {
+  // matchMedia is absent in jsdom; treat that like the server render, a wide screen.
+  const wide = useSyncExternalStore(
+    onChange => {
+      if (typeof window.matchMedia !== 'function') return () => {};
+      const mq = window.matchMedia(WIDE);
+      mq.addEventListener('change', onChange);
+      return () => mq.removeEventListener('change', onChange);
+    },
+    () => typeof window.matchMedia !== 'function' || window.matchMedia(WIDE).matches,
+    () => true
+  );
+  return wide ? 346 : 296;
+}
 
 const BUILD_MODE_PROMPTS: Record<PlaceableKind, string> = {
   road: 'Choose where to build your road',
@@ -78,6 +102,7 @@ export function GameView({ state, performAction, onLeave }: GameViewProps) {
   // as "you" can never disagree with the hand we were sent. null = spectator.
   const myPlayerIndex = state.viewerSeatIndex;
   const myHand = ownHand(state);
+  const panelInset = usePanelInset();
 
   const [activeMapAction, setActiveMapAction] = useState<'none' | 'roadBuilding' | 'knight'>('none');
   const [pendingRoadBuildingRoads, setPendingRoadBuildingRoads] = useState<[string, string][]>([]);
@@ -205,30 +230,13 @@ export function GameView({ state, performAction, onLeave }: GameViewProps) {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-slate-900 text-white">
-      <div className="flex min-h-0 flex-1">
-        {/* Left HUD: build actions above the turn and player information (DESIGN.md §19). */}
-        <div className="flex min-h-0 w-72 shrink-0 flex-col overflow-y-auto border-r border-slate-700 bg-slate-800/90 backdrop-blur">
-          <div className="p-3 pb-0">
-            <BuildPanel state={state} activeKind={activeBuildMode} onSelect={handleBuildSelect} />
-          </div>
+    <div className="flex h-screen flex-col overflow-hidden bg-hs-abyss font-hud text-hs-text">
+      <TopBar state={state} onLeave={onLeave} />
 
-          <PlayerSidebar
-            players={state.players}
-            currentPlayerIndex={state.currentPlayerIndex}
-            myPlayerIndex={myPlayerIndex}
-            diceRoll={state.diceRoll}
-            longestRoad={state.longestRoad}
-            onRoll={() => performAction({ type: 'ROLL_DICE' })}
-            onEndTurn={() => {
-              performAction({ type: 'END_TURN' });
-              cancelBuildMode();
-            }}
-          />
-        </div>
-
-        {/* Center: The Map */}
-        <main className="relative flex min-w-0 flex-1 overflow-hidden">
+      {/* The board region: the sea fills it edge to edge, and the HUD panels float
+          over its sides as glass cards rather than sitting in flush sidebars. */}
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        <main className="absolute inset-0 flex">
           {activeMapAction === 'roadBuilding' && (
             <BoardModeBanner
               tone="blue"
@@ -264,6 +272,7 @@ export function GameView({ state, performAction, onLeave }: GameViewProps) {
             legalNodes={legal.nodes}
             legalEdges={legal.edges}
             previewColor={myPlayerIndex === null ? undefined : state.players[myPlayerIndex]?.color}
+            insetX={panelInset}
             onBuildSettlement={(nodeId) => {
               if (myPlayerIndex === null) return;
               performAction({ type: 'BUILD_SETTLEMENT', payload: { nodeId, playerId: myPlayerIndex } });
@@ -278,52 +287,47 @@ export function GameView({ state, performAction, onLeave }: GameViewProps) {
           />
         </main>
 
-        {/* Right Sidebar: Trading & Logs */}
-        <aside className="w-80 bg-slate-900/50 border-l border-slate-800 flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-slate-800 bg-slate-900/30">
-            {myPlayerIndex !== null && myHand ? (
-              <TradeUI
-                localPlayerId={myPlayerIndex}
-                currentPlayerIndex={state.currentPlayerIndex}
-                localPlayer={myHand}
-                players={state.players}
-                currentTradeOffer={state.currentTradeOffer}
-                onTradeWithBank={(offerResource, requestResource) => performAction({ type: 'TRADE_WITH_BANK', payload: { playerId: myPlayerIndex, offerResource, requestResource } })}
-                onProposeTrade={(offer) => performAction({ type: 'PROPOSE_TRADE', payload: { offer } })}
-                onAcceptTrade={() => performAction({ type: 'ACCEPT_TRADE', payload: { acceptorId: myPlayerIndex } })}
-                onCancelTrade={() => performAction({ type: 'CANCEL_TRADE' })}
-              />
-            ) : (
-              <div data-cy="spectator-panel" className="p-4 text-center border border-dashed border-slate-700 rounded-xl">
-                <p className="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-3">You are spectating</p>
-                <button
-                  onClick={onLeave}
-                  data-cy="stop-spectating-btn"
-                  className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-xs font-bold transition-colors"
-                >
-                  Leave
-                </button>
-              </div>
-            )}
-          </div>
+        {/* The columns ignore the pointer so the board can still be dragged in the gaps
+            between panels; the panels themselves take it back. */}
+        <div className={clsx(PANEL_COLUMN, "left-4")}>
+          <BuildPanel state={state} activeKind={activeBuildMode} onSelect={handleBuildSelect} />
+          <PlayersPanel state={state} />
+        </div>
 
-          <div className="flex-1 p-4 flex flex-col overflow-hidden">
-            <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-600 mb-4">Event Log</h2>
-            <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-              {[...state.gameLog].map((log, i) => (
-                <div key={i} className="text-[10px] font-mono text-slate-500 border-l border-slate-800 pl-2 leading-relaxed animate-in fade-in slide-in-from-left-1">
-                  <span className="text-slate-700">#</span> {log}
-                </div>
-              ))}
+        <div className={clsx(PANEL_COLUMN, "right-4")}>
+          {myPlayerIndex !== null && myHand ? (
+            <TradePanel
+              state={state}
+              me={myHand}
+              onTradeWithBank={(offerResource, requestResource) => performAction({ type: 'TRADE_WITH_BANK', payload: { playerId: myPlayerIndex, offerResource, requestResource } })}
+              onProposeTrade={(offer) => performAction({ type: 'PROPOSE_TRADE', payload: { offer } })}
+              onAcceptTrade={() => performAction({ type: 'ACCEPT_TRADE', payload: { acceptorId: myPlayerIndex } })}
+              onCancelTrade={() => performAction({ type: 'CANCEL_TRADE' })}
+            />
+          ) : (
+            <div data-cy="spectator-panel" className="hs-panel flex shrink-0 flex-col items-center gap-3 px-4 py-5 text-center">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-hs-mute">You are spectating</p>
+              <button
+                onClick={onLeave}
+                data-cy="stop-spectating-btn"
+                className="cursor-pointer rounded-[7px] border border-[rgba(110,160,220,0.2)] bg-[rgba(20,40,68,0.6)] px-4 py-2 text-[13px] font-semibold text-hs-dim transition-colors hover:text-hs-text"
+              >
+                Leave
+              </button>
             </div>
-          </div>
-        </aside>
+          )}
+
+          <ActivityLog log={state.gameLog} players={state.players} />
+        </div>
       </div>
 
-      {/* The player's own cards: bottom-anchored, a sibling of the board row rather than
-          an overlay, so it can never cover the board it sits under. */}
-      <PlayerHand
+      <HandBar
         state={state}
+        onRoll={() => performAction({ type: 'ROLL_DICE' })}
+        onEndTurn={() => {
+          performAction({ type: 'END_TURN' });
+          cancelBuildMode();
+        }}
         onPlayDevCard={playDevCard}
         onInitiateMapCard={initiateMapCard}
       />

@@ -115,6 +115,40 @@ export const PLAYER_PIECE_SHADES: Record<PlayerColor, PieceShades> = {
 export const pieceShades = (color: PlayerColor | string | undefined): PieceShades =>
   PLAYER_PIECE_SHADES[color as PlayerColor] ?? PLAYER_PIECE_SHADES.white;
 
+/** Player colour as flat CSS, for HUD text, swatches and log rules (inline styles). */
+export const PLAYER_COLOR_CSS: Record<PlayerColor, string> = {
+  red: '#b91c1c',
+  blue: '#1d4ed8',
+  white: '#e2e8f0',
+  orange: '#f59e0b',
+  green: '#059669',
+  brown: '#78350f',
+  purple: '#7e22ce',
+};
+
+/**
+ * HUD text colour per player. The swatch colours above are too dark to read as text on
+ * the navy panels for blue, brown and purple, so text uses a lifted shade of the same hue.
+ */
+export const PLAYER_TEXT_CSS: Record<PlayerColor, string> = {
+  red: '#f87171',
+  blue: '#60a5fa',
+  white: '#e2e8f0',
+  orange: '#fbbf24',
+  green: '#34d399',
+  brown: '#c08a5a',
+  purple: '#c084fc',
+};
+
+/** Border tint for each resource card in the hand. */
+export const RESOURCE_CARD_BORDERS: Record<ResourceType, string> = {
+  wood: '#8aa06a',
+  brick: '#c07a52',
+  sheep: '#8fbf72',
+  wheat: '#e0bb63',
+  ore: '#8b99a8',
+};
+
 export const PLAYER_COLOR_LABELS: Record<PlayerColor, string> = {
   red: 'Red',
   blue: 'Blue',

@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { clsx } from "clsx";
+import { UserRound } from "lucide-react";
 import type { AnyCardArgs, DevelopmentCardType, GameStateView } from "@/types/catan";
 import { ownHand } from "@/lib/game/helpers/playerView";
 import { playerName } from "@/lib/game/helpers/playerName";
 import { isPlayableCardType } from "@/lib/game/helpers/devCardInfo";
-import { PLAYER_COLOR_CLASSES, RESOURCE_TYPES } from "@/lib/constants";
+import { PLAYER_COLOR_CSS, RESOURCE_TYPES } from "@/lib/constants";
 import { DevCardModal } from "@/components/ui/DevCardModal";
 import { ResourceCard } from "./ResourceCard";
 import { DevCard } from "./DevCard";
@@ -23,7 +24,7 @@ interface PlayerHandProps {
 const DISCARD_THRESHOLD = 7;
 
 /**
- * The viewing seat's own hand, along the bottom of the screen.
+ * The viewing seat's own hand: identity, then the cards, inside the bottom hand bar.
  *
  * It renders from `ownHand`, so it is drawn only where the server actually sent a hand:
  * the viewer's own seat. A spectator has no seat, gets no `resources`, and therefore
@@ -74,86 +75,81 @@ export function PlayerHand({ state, onPlayDevCard, onInitiateMapCard }: PlayerHa
 
   return (
     <>
-      <footer
-        data-cy="player-hand"
-        className="shrink-0 border-t border-white/10 bg-slate-950/85 px-4 py-3 backdrop-blur"
-      >
-        <div className="flex items-center gap-5">
-          {/* Identity: colour comes from player.color, never from the seat index. */}
-          <div data-cy="hand-identity" className="flex w-40 shrink-0 items-center gap-3">
-            <span
-              data-cy="hand-player-swatch"
-              data-player-color={hand.color}
+      <div data-cy="player-hand" className="flex min-w-0 flex-1 items-center">
+        {/* Identity: colour comes from player.color, never from the seat index. */}
+        <div data-cy="hand-identity" className="flex shrink-0 items-center gap-3.5 pr-6">
+          <span
+            data-cy="hand-player-swatch"
+            data-player-color={hand.color}
+            className="flex h-[58px] w-[58px] items-center justify-center rounded-full shadow-[0_0_0_2px_rgba(150,200,255,0.3)]"
+            style={{ background: PLAYER_COLOR_CSS[hand.color] }}
+          >
+            <UserRound size={30} className="text-hs-abyss" fill="currentColor" strokeWidth={0} aria-hidden />
+          </span>
+          <div className="flex min-w-0 max-w-[140px] flex-col gap-[3px]">
+            <p className="truncate text-[19px] font-bold text-hs-text">{playerName(hand, hand.id)}</p>
+            <p
+              data-cy="hand-total"
+              data-total={total}
               className={clsx(
-                "h-9 w-9 rounded-full border-2 border-white/20 shadow-inner",
-                PLAYER_COLOR_CLASSES[hand.color]
+                "text-[13px]",
+                total > DISCARD_THRESHOLD ? "font-semibold text-amber-400" : "text-hs-mute"
               )}
-            />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-white">{playerName(hand, hand.id)}</p>
-              <p
-                data-cy="hand-total"
-                data-total={total}
-                className={clsx(
-                  "text-[11px] font-semibold",
-                  total > DISCARD_THRESHOLD ? "text-amber-400" : "text-slate-400"
-                )}
-                title={
-                  total > DISCARD_THRESHOLD
-                    ? 'Over 7 cards — you discard half on a roll of 7'
-                    : undefined
-                }
-              >
-                {total} {total === 1 ? 'card' : 'cards'}
-              </p>
-            </div>
-          </div>
-
-          {/* min-w-0 is what makes the overflow scroll rather than widening the page:
-              a flex child will not shrink below its content without it. */}
-          <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto pb-1">
-            {/* One card per resource type held; the count lives on the badge. */}
-            <div data-cy="hand-resources" className="flex items-center gap-2">
-              {held.map(resource => (
-                <ResourceCard
-                  key={resource}
-                  resource={resource}
-                  count={hand.resources[resource]}
-                  justGained={justGained.includes(resource)}
-                />
-              ))}
-              {held.length === 0 && (
-                <p data-cy="hand-empty" className="text-xs italic text-slate-500">
-                  No resource cards
-                </p>
-              )}
-            </div>
-
-            {devCards.length > 0 && (
-              <>
-                <span className="h-16 w-px shrink-0 bg-white/10" aria-hidden />
-                <div data-cy="hand-dev-cards" className="flex items-center gap-2">
-                  {devCards.map((card, i) => {
-                    const lockReason = lockReasonFor(card);
-                    return (
-                      <DevCard
-                        key={`${card.type}-${card.boughtThisTurn ? 'new' : 'held'}-${i}`}
-                        type={card.type}
-                        lockReason={lockReason}
-                        onPlay={
-                          isPlayableCardType(card.type) && lockReason === null
-                            ? () => handleInitiatePlay(card.type)
-                            : undefined
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              </>
-            )}
+              title={
+                total > DISCARD_THRESHOLD
+                  ? 'Over 7 cards — you discard half on a roll of 7'
+                  : undefined
+              }
+            >
+              {total} {total === 1 ? 'card' : 'cards'}
+            </p>
           </div>
         </div>
-      </footer>
+
+        <span className="h-[110px] w-px shrink-0 bg-[rgba(110,160,220,0.16)]" aria-hidden />
+
+        {/* min-w-0 is what makes the overflow scroll rather than widening the page:
+            a flex child will not shrink below its content without it. The vertical
+            padding leaves room for a card's hover lift inside the scroll box. */}
+        <div className="hs-scroll flex min-w-0 flex-1 items-center gap-3 overflow-x-auto px-6 py-2.5">
+          {/* One card per resource type held; the count lives on the badge. */}
+          <div data-cy="hand-resources" className="flex items-center gap-3">
+            {held.map(resource => (
+              <ResourceCard
+                key={resource}
+                resource={resource}
+                count={hand.resources[resource]}
+                justGained={justGained.includes(resource)}
+              />
+            ))}
+            {held.length === 0 && (
+              <p data-cy="hand-empty" className="text-[13px] italic text-hs-mute">
+                No resource cards
+              </p>
+            )}
+          </div>
+
+          {devCards.length > 0 && (
+            <div data-cy="hand-dev-cards" className="flex items-center gap-3">
+              {devCards.map((card, i) => {
+                const lockReason = lockReasonFor(card);
+                return (
+                  <DevCard
+                    key={`${card.type}-${card.boughtThisTurn ? 'new' : 'held'}-${i}`}
+                    type={card.type}
+                    lockReason={lockReason}
+                    onPlay={
+                      isPlayableCardType(card.type) && lockReason === null
+                        ? () => handleInitiatePlay(card.type)
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
 
       {activeCardPrompt && (
         <DevCardModal

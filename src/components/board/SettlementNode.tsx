@@ -10,17 +10,15 @@ interface SettlementNodeProps {
    */
   isLegalTarget?: boolean;
   onSelect?: () => void;
-  /** Drives the hover preview, which stands up in the piece layer rather than here. */
+  /** Drives the hover preview, which `PieceLayer` draws. */
   onHover?: (hovering: boolean) => void;
 }
 
 /**
- * A settlement spot on the board plane: the click target, the legal-target marker and
- * the piece's contact shadow.
+ * A settlement spot on the board: the click target and the legal-target marker.
  *
- * The piece itself is not drawn here, and neither is its shadow: the piece is a three.js
- * mesh on the layer above, and it casts a real one. This element stays flat on the board,
- * where the pointer geometry and every `data-cy` the specs rely on already live.
+ * The piece itself is drawn by `PieceLayer`, which ignores the pointer, so this element
+ * is always what a click on the spot reaches.
  */
 export function SettlementNode({
   node,

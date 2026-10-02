@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 import { Lock, Play } from "lucide-react";
 import type { DevelopmentCardType } from "@/types/catan";
 import { DEV_CARD_INFO } from "@/lib/game/helpers/devCardInfo";
-import { DevCardArt, devCardAccent } from "./DevCardArt";
+import { HAND_CARD_SIZE } from "./ResourceCard";
 
 interface DevCardProps {
   type: DevelopmentCardType;
@@ -18,6 +18,17 @@ interface DevCardProps {
   onPlay?: () => void;
 }
 
+/** The development card face: a compass rose on deep navy. */
+function CompassRose() {
+  return (
+    <svg viewBox="0 0 100 142" className="absolute inset-0 h-full w-full" aria-hidden>
+      <circle cx={50} cy={71} r={31} fill="none" stroke="#cbb28a" strokeWidth={1} opacity={0.35} />
+      <path d="M50 33 L56 65 L88 71 L56 77 L50 109 L44 77 L12 71 L44 65 Z" fill="#e3cfa2" opacity={0.9} />
+      <path d="M27 48 L52 68 L73 94 L48 74 Z" fill="#e3cfa2" opacity={0.45} />
+    </svg>
+  );
+}
+
 /**
  * One development card, face up, in one of three states: playable, locked this turn, or
  * scoring-only.
@@ -28,61 +39,38 @@ interface DevCardProps {
  */
 export function DevCard({ type, lockReason, onPlay }: DevCardProps) {
   const info = DEV_CARD_INFO[type];
-  const accent = devCardAccent(type);
   const locked = lockReason !== null;
   const playable = !locked && onPlay !== undefined;
 
   const face = (
     <>
-      <div
-        aria-hidden
-        className="absolute -right-3 -bottom-3 opacity-20"
-        style={{ color: accent }}
-      >
-        <DevCardArt type={type} className="h-16 w-16" />
-      </div>
-
-      <div className="relative flex h-full flex-col gap-1 p-1.5 text-left">
-        <div className="flex items-start gap-1">
-          <span
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded"
-            style={{ backgroundColor: accent }}
-          >
-            <DevCardArt type={type} className="h-4 w-4" />
+      <CompassRose />
+      <span className="absolute inset-x-0 top-0 bg-gradient-to-b from-[rgba(6,14,28,0.85)] to-transparent px-1.5 pt-1.5 pb-4 text-center text-[11px] leading-tight font-bold text-hs-parchment">
+        {info.name}
+      </span>
+      <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-[rgba(6,14,28,0.7)] px-1 py-1 text-[10px] font-bold uppercase tracking-wide">
+        {playable && (
+          <span className="flex items-center gap-1 text-hs-ok">
+            <Play size={9} fill="currentColor" /> Play
           </span>
-          <span className="text-[9px] font-black uppercase leading-[1.1] tracking-tight text-slate-100 xl:text-[10px]">
-            {info.name}
+        )}
+        {locked && (
+          <span data-cy="dev-card-lock-reason" className="flex items-center gap-1 truncate text-hs-mute">
+            <Lock size={9} /> {lockReason}
           </span>
-        </div>
-
-        <p className="text-[8px] leading-[1.25] text-slate-300 xl:text-[9px]">{info.description}</p>
-
-        <span className="mt-auto flex items-center gap-1 text-[8px] font-bold uppercase tracking-wide">
-          {playable && (
-            <span className="flex items-center gap-1 text-emerald-300">
-              <Play size={8} fill="currentColor" /> Play
-            </span>
-          )}
-          {locked && (
-            <span
-              data-cy="dev-card-lock-reason"
-              className="flex items-center gap-1 truncate text-slate-400"
-            >
-              <Lock size={8} /> {lockReason}
-            </span>
-          )}
-          {!playable && !locked && (
-            <span className="truncate text-amber-200/70">Scores at the end</span>
-          )}
-        </span>
-      </div>
+        )}
+        {!playable && !locked && <span className="truncate text-hs-parchment-2/80">Scores at end</span>}
+      </span>
     </>
   );
 
   const faceClasses = clsx(
-    "relative h-[92px] w-[116px] overflow-hidden rounded-lg border-2 bg-slate-900/95 shadow-[0_4px_10px_rgba(2,6,23,0.6)]",
-    "xl:h-[106px] xl:w-[132px]",
-    playable && "cursor-pointer transition-transform duration-150 hover:-translate-y-1.5",
+    "relative block overflow-hidden rounded-lg border-2 p-0 shadow-[0_10px_24px_rgba(2,8,18,0.5)]",
+    "bg-[radial-gradient(120%_90%_at_50%_40%,#16395f_0%,#0a1c33_70%)]",
+    HAND_CARD_SIZE,
+    playable
+      ? "cursor-pointer border-hs-accent transition-transform duration-150 hover:-translate-y-1.5"
+      : "border-[#3c5a80]",
     locked && "opacity-60 saturate-50"
   );
 
@@ -101,17 +89,12 @@ export function DevCard({ type, lockReason, onPlay }: DevCardProps) {
           data-cy="play-dev-card-btn"
           onClick={onPlay}
           className={faceClasses}
-          style={{ borderColor: accent }}
           aria-label={`Play ${info.name}`}
         >
           {face}
         </button>
       ) : (
-        <div
-          className={faceClasses}
-          style={{ borderColor: locked ? '#334155' : accent }}
-          aria-label={info.name}
-        >
+        <div className={faceClasses} aria-label={info.name}>
           {face}
         </div>
       )}
